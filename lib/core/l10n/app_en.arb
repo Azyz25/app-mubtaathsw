@@ -1,0 +1,412 @@
+﻿{
+  "@@locale": "en",
+
+  "appTitle": "Mubtaath",
+
+  "back": "Back",
+  "seeAll": "See all",
+  "liveNow": "Live",
+  "comingSoon": "Coming soon",
+  "or": "or",
+  "noResults": "No results",
+  "noResultsFor": "No results for \"{query}\"",
+  "@noResultsFor": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "listeners": "{count} listener",
+  "@listeners": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "roomsCount": "{count} room",
+  "@roomsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "pageNotFound": "Page not found",
+
+  "navHome": "Home",
+  "navCommunity": "Community",
+  "navPrayer": "Prayer",
+  "navGuide": "Guide",
+
+  "greeting": "Hey, {name} 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "studyingIn": "Studying in {country}",
+  "@studyingIn": {
+    "placeholders": {
+      "country": { "type": "String" }
+    }
+  },
+  "featuredRooms": "Featured Rooms",
+  "searchResults": "Search Results",
+  "tryDifferentSearch": "Try a different search",
+
+  "login": "Login",
+  "loginTitle": "Welcome back",
+  "loginSubtitle": "Sign in to continue using the app",
+  "register": "Register",
+  "registerTitle": "Create account",
+  "registerSubtitle": "Join the Saudi student community",
+  "registerEnterDetails": "Enter your basic information",
+  "forgotPassword": "Forgot password?",
+  "forgotPasswordTitle": "Reset password",
+  "forgotPasswordSubtitle": "Enter your email to receive an account recovery code.",
+  "email": "Email",
+  "emailHint": "example@email.com",
+  "password": "Password",
+  "passwordHint": "Password",
+  "confirmPassword": "Confirm password",
+  "confirmPasswordHint": "Re-enter your password",
+  "fullName": "Full name",
+  "fullNameHint": "Your full name",
+  "username": "Username",
+  "usernameHint": "Username",
+  "phone": "Phone number",
+  "phoneHint": "+966XXXXXXXXX",
+  "send": "Send",
+  "sendCode": "Send Code",
+  "sendResetLink": "Send reset link",
+  "verify": "Verify",
+  "resendCode": "Resend code",
+  "resendIn": "Resend in {seconds} seconds",
+  "@resendIn": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "resendWithTimer": "Resend code ( {timer} )",
+  "@resendWithTimer": {
+    "placeholders": {
+      "timer": { "type": "String" }
+    }
+  },
+  "otpTitle": "Enter verification code",
+  "otpSubtitle": "We sent a verification code to {email}",
+  "@otpSubtitle": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "emailConfirmation": "Email Confirmation",
+  "otpEnterCode": "Enter the verification code sent to",
+  "newCodeSent": "A new code has been sent to your email",
+  "alreadyHaveAccount": "Already have an account?",
+  "alreadyHaveAccountFull": "Already have an account? ",
+  "dontHaveAccount": "Don't have an account?",
+  "orContinueWith": "Or continue with",
+  "signInWithGoogle": "Sign in with Google",
+  "iAgreeToThe": "I agree to the ",
+  "termsAndConditions": "Terms and Conditions",
+  "andPrivacyPolicy": " and Privacy Policy",
+  "agreeToTerms": "I agree to the terms and conditions",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "resetSentTitle": "Sent!",
+  "resetSentBodyPrefix": "Account recovery code sent to",
+  "checkInbox": "Check your inbox and spam folder.",
+  "backToLogin": "Back to login",
+  "rememberPassword": "Remember it?",
+  "resetLinkExpiry": "The code is valid for 15 minutes only",
+  "resetPasswordTitle": "Set a new password",
+  "resetPasswordSubtitle": "Enter the code sent to your email and your new password",
+  "passwordResetSuccess": "Your password has been changed, you can sign in now",
+
+  "loginError": "Email or password is incorrect",
+  "genericError": "An error occurred, please try again",
+  "invalidEmailError": "Please enter a valid email address",
+  "registerError": "A connection error occurred, please try again",
+  "otpIncompleteError": "Please enter the complete verification code",
+  "otpInvalidError": "Invalid verification code, please try again",
+  "otpResendError": "Failed to resend code, please try again",
+
+  "validFullNameRequired": "Please enter your full name",
+  "validFullNameMin": "Full name must be at least 3 characters",
+  "validUsernameRequired": "Please enter a username",
+  "validUsernameMin": "Username must be at least 3 characters",
+  "validPhoneRequired": "Please enter your phone number",
+  "validPhoneInvalid": "Invalid phone number",
+  "validEmailRequired": "Please enter your email address",
+  "validEmailInvalid": "Invalid email format",
+  "validPasswordRequired": "Please enter a password",
+  "validPasswordMin": "Password must be at least 8 characters",
+  "validConfirmPasswordRequired": "Please confirm your password",
+  "validPasswordMismatch": "Passwords do not match",
+  "validTermsRequired": "You must agree to the terms and conditions to continue",
+
+  "homeSearchHint": "Search rooms and discussions...",
+
+  "communityTitle": "{countryName} Community",
+  "@communityTitle": {
+    "placeholders": {
+      "countryName": { "type": "String" }
+    }
+  },
+  "communitySearchHint": "Search voice rooms...",
+  "filterAll": "All",
+  "filterAcademic": "Academic",
+  "filterSocial": "Social",
+  "filterLegal": "Legal",
+  "filterCultural": "Cultural",
+  "noRoomsAvailable": "No rooms available",
+
+  "notificationsTitle": "Notifications",
+  "markAllRead": "Mark all as read",
+  "noNotifications": "No notifications",
+  "noNotificationsSub": "Your notifications will appear here",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "earlier": "Earlier",
+  "timeNow": "Now",
+  "minutesAgo": "{count}m ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "hoursAgo": "{count}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "settingsTitle": "Settings",
+  "appLanguage": "App language",
+  "language": "Language",
+  "arabic": "Arabic",
+  "english": "English",
+  "help": "Help",
+  "aboutApp": "About app",
+  "logout": "Logout",
+  "logoutConfirmTitle": "Logout",
+  "logoutConfirmBody": "Are you sure you want to logout?",
+  "logoutConfirm": "Logout",
+  "deleteAccount": "Delete account",
+  "deleteAccountConfirmTitle": "Confirm permanent account deletion",
+  "deleteAccountConfirmBody": "Warning: This action will permanently delete your account and all your data registered on the Mubtaath platform, and it cannot be undone. Are you sure?",
+  "deleteAccountConfirm": "Delete permanently",
+  "deleteAccountError": "Failed to delete account, please try again",
+  "appVersion": "Version",
+
+  "prayerTimesTitle": "Prayer Times",
+  "fajr": "Fajr",
+  "sunrise": "Sunrise",
+  "dhuhr": "Dhuhr",
+  "asr": "Asr",
+  "maghrib": "Maghrib",
+  "isha": "Isha",
+  "nextPrayer": "Next prayer",
+  "timeRemaining": "Time remaining",
+  "loadingLocation": "Getting location...",
+  "locationError": "Could not get location",
+  "qiblaDirection": "Qibla direction",
+  "kaabaDirection": "Kaaba direction",
+  "knowKaabaDirection": "Find the Kaaba direction",
+  "fromNorth": "from north",
+  "timePeriodAm": "AM",
+  "timePeriodPm": "PM",
+
+  "qiblaTitle": "Qibla",
+  "pointToKaaba": "Point the device toward the Qibla",
+  "liveCompass": "Live Compass",
+  "compassInstruction": "Point your phone until the golden arrow points toward the Kaaba",
+  "directionLabel": "Direction",
+  "qiblaLabel": "Qibla",
+  "calibrating": "Calibrating...",
+  "degreeFromNorth": "{degree}° from north",
+  "@degreeFromNorth": {
+    "placeholders": {
+      "degree": { "type": "String" }
+    }
+  },
+  "locationPermissionMsg": "Please grant location permission in device settings",
+  "openSettings": "Open Settings",
+  "howToUse": "How to Use",
+  "qiblaInstructions": "• Hold your phone flat on a level surface\n• Stay away from metals and electronics\n• The golden arrow 🕋 points toward the Qibla",
+  "staticCompassNote": "Qibla direction (calculated)",
+  "prayersComplete": "Today's prayers complete",
+
+  "studentGuideTitle": "Student Guide",
+  "studentGuideSearchHint": "Search the guide...",
+  "linksCount": "{count} links",
+  "@linksCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "itemsCount": "{count} items",
+  "@itemsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "studentTipLabel": "Student Tip",
+  "studentTipBody": "Always keep a copy of your passport and embassy details on your phone",
+  "resultsCount": "{count} results",
+  "@resultsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mainSections": "Main Sections",
+  "guideCategoryEmbassy": "Embassy & Consulates",
+  "guideCategoryEmergency": "Emergency Services",
+  "guideCategoryLegal": "Legal Support",
+  "guideCategoryHousing": "Housing Guide",
+  "guideCategoryHealth": "Health Insurance",
+  "guideCategoryTransport": "Transport",
+
+  "profileTitle": "Profile",
+  "editProfile": "Edit profile",
+  "saveChanges": "Save changes",
+  "savedSuccess": "Saved",
+  "saveError": "Failed to save, please try again",
+  "selectCountry": "Select country",
+  "selectYourCountry": "Select your country",
+  "selectCountrySubtitle": "So we can prepare the right services for you",
+  "countrySelected": "{country} selected",
+  "@countrySelected": {
+    "placeholders": {
+      "country": { "type": "String" }
+    }
+  },
+  "continueButton": "Continue",
+  "fieldBio": "About",
+  "fieldFullName": "Full name",
+  "fieldCountry": "Country",
+  "changePassword": "Change password",
+  "currentPassword": "Current password",
+  "currentPasswordHint": "Enter your current password",
+  "newPassword": "New password",
+  "newPasswordHint": "Enter a new password",
+
+  "speakerRole": "Speaker",
+  "speakersCount": "{count} speakers",
+  "@speakersCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "roomDescription": "Room Description",
+  "speakersLabel": "Speakers",
+  "joinRoom": "Join",
+  "moreSpeakers": "+ {count} more speakers",
+  "@moreSpeakers": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "chatTab": "Chat",
+  "messagePlaceholder": "Type your message...",
+  "liveRoomBadge": "Live Room",
+  "listenersNow": "{count} listening now",
+  "@listenersNow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "mubtaathTitle": "Mubtaath",
+  "mubtaathTagline": "The voice community for Saudi students abroad",
+
+  "microphonePermissionRequired": "Please grant microphone permission to continue",
+  "participants": "Participants",
+  "connecting": "Connecting...",
+  "connected": "Connected",
+  "audioConnectionError": "Failed to connect audio",
+  "agoraConnectivityWarning": "Connectivity Warning",
+  "agoraConnectivityWarningBody": "Audio could not start. The voice connection is unavailable.",
+  "noParticipantsYet": "No participants yet",
+  "tapMicToSpeak": "Tap the mic to speak",
+  "leaveRoom": "Leave room",
+  "audioOutput": "Audio output",
+  "audioOutputSpeaker": "Speaker",
+  "audioOutputEarpiece": "Earpiece",
+
+  "helpAndSupport": "Help & Support",
+  "reportUser": "Report User",
+  "reportMessage": "Report Message",
+  "reportCategory": "Report Category",
+  "categoryTechnical": "Technical Issue",
+  "categorySuggestion": "Suggestion",
+  "categoryComplaint": "Complaint",
+  "categoryInappropriate": "Inappropriate Behavior",
+  "categorySpam": "Spam or Harassment",
+  "describeIssue": "Describe the Issue",
+  "describeIssueHint": "Write the details of your issue...",
+  "submitReport": "Submit Report",
+  "reportSubmittedTitle": "Report Submitted",
+  "reportSubmittedBody": "Thank you, we will review your report as soon as possible",
+  "reportingUser": "Reporting User",
+  "reportingMessage": "Reporting Message",
+  "selectCategory": "Select Category",
+  "descriptionRequired": "Please describe the issue",
+  "categoryRequired": "Please select a category",
+  "reportSentSuccess": "Report sent successfully",
+  "reportSentError": "Failed to send report, please try again",
+  "viewProfile": "View Profile",
+  "userProfile": "User Profile",
+
+  "newReport": "New Report",
+  "myReports": "My Reports",
+  "statusPending": "Pending",
+  "statusResolved": "Resolved",
+  "statusDismissed": "Dismissed",
+  "statusUnderReview": "Under Review",
+  "adminReply": "Admin Reply",
+  "noReportsYet": "No reports yet",
+  "noReportsSubtitle": "Your submitted reports will appear here",
+
+  "ticketDetails": "Ticket Details",
+  "yourIssue": "Your Issue",
+  "yourReply": "Your Reply",
+  "replyToAdmin": "Reply to Admin",
+  "replySentSuccess": "Your reply was sent successfully",
+  "conversationThread": "Conversation",
+  "noMessagesYet": "No messages yet",
+  "tryAgain": "Try Again",
+
+  "floatingMessages": "Floating Messages",
+  "kickedFromRoom": "Removed from Room",
+  "kickedFromRoomBody": "A moderator has removed you from this room.",
+  "tempBannedFromRoom": "Temporarily Banned",
+  "tempBannedFromRoomBody": "You have been temporarily banned from this room.",
+
+  "attendeesLabel": "Attendees",
+  "attendeesCount": "{count} attending",
+  "@attendeesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "moreAttendees": "+{count} more",
+  "@moreAttendees": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attendeesNow": "{count} listening now",
+  "@attendeesNow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "moderatorBadge": "Moderator",
+  "ghostModeEnabled": "Ghost mode on — you are hidden from the room",
+  "ghostModeDisabled": "Ghost mode off — you are visible in the room",
+  "viewProfile": "View Profile",
+  "audioOutput": "Audio Output",
+  "loudspeaker": "Loudspeaker",
+  "earpiece": "Earpiece",
+  "roomFull": "Sorry, this room has reached its maximum capacity."
+}

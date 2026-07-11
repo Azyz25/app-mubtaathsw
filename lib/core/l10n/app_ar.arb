@@ -1,0 +1,412 @@
+﻿{
+  "@@locale": "ar",
+
+  "appTitle": "مبتعث",
+
+  "back": "رجوع",
+  "seeAll": "عرض الكل",
+  "liveNow": "مباشر",
+  "comingSoon": "قريباً",
+  "or": "أو",
+  "noResults": "لا توجد نتائج",
+  "noResultsFor": "لا توجد نتائج لـ \"{query}\"",
+  "@noResultsFor": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "listeners": "{count} مستمع",
+  "@listeners": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "roomsCount": "{count} روم",
+  "@roomsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "pageNotFound": "الصفحة غير موجودة",
+
+  "navHome": "الرئيسية",
+  "navCommunity": "المجتمع",
+  "navPrayer": "الصلاة",
+  "navGuide": "الدليل",
+
+  "greeting": "هلا، {name} 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "studyingIn": "مبتعث في {country}",
+  "@studyingIn": {
+    "placeholders": {
+      "country": { "type": "String" }
+    }
+  },
+  "featuredRooms": "أبرز الرومات الحالية",
+  "searchResults": "نتائج البحث",
+  "tryDifferentSearch": "جرّب بحثاً مختلفاً",
+
+  "login": "تسجيل الدخول",
+  "loginTitle": "مرحباً بعودتك",
+  "loginSubtitle": "سجّل دخولك لاستمرار استعمال التطبيق",
+  "register": "إنشاء حساب",
+  "registerTitle": "إنشاء حساب جديد",
+  "registerSubtitle": "انضم لمجتمع المبتعثين السعوديين",
+  "registerEnterDetails": "أدخل بياناتك الاساسية",
+  "forgotPassword": "نسيت كلمة المرور؟",
+  "forgotPasswordTitle": "إعادة تعيين كلمة المرور",
+  "forgotPasswordSubtitle": "أدخل بريدك الإلكتروني لإرسال\nرمز استعادة الحساب.",
+  "email": "البريد الإلكتروني",
+  "emailHint": "example@email.com",
+  "password": "كلمة المرور",
+  "passwordHint": "كلمة المرور",
+  "confirmPassword": "تأكيد كلمة المرور",
+  "confirmPasswordHint": "أعد إدخال كلمة المرور",
+  "fullName": "الاسم الكامل",
+  "fullNameHint": "اسمك الكامل",
+  "username": "اسم المستخدم",
+  "usernameHint": "اسم المستخدم",
+  "phone": "رقم الجوال",
+  "phoneHint": "+966XXXXXXXXX",
+  "send": "إرسال",
+  "sendCode": "إرسال الرمز",
+  "sendResetLink": "إرسال رابط الاسترداد",
+  "verify": "تحقق",
+  "resendCode": "إعادة ارسال الرمز",
+  "resendIn": "إعادة الإرسال بعد {seconds} ثانية",
+  "@resendIn": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "resendWithTimer": "إعادة ارسال الرمز ( {timer} )",
+  "@resendWithTimer": {
+    "placeholders": {
+      "timer": { "type": "String" }
+    }
+  },
+  "otpTitle": "أدخل رمز التحقق",
+  "otpSubtitle": "أرسلنا رمز التحقق إلى {email}",
+  "@otpSubtitle": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "emailConfirmation": "تأكيد البريد الإلكتروني",
+  "otpEnterCode": "أدخل رمز التحقق المرسل إلى",
+  "newCodeSent": "تم إرسال رمز جديد إلى بريدك الإلكتروني",
+  "alreadyHaveAccount": "لديك حساب؟",
+  "alreadyHaveAccountFull": "لديك حساب بالفعل؟ ",
+  "dontHaveAccount": "ليس لديك حساب؟",
+  "orContinueWith": "أو تابع عبر",
+  "signInWithGoogle": "تسجيل الدخول عبر قوقل",
+  "iAgreeToThe": "أوافق على ",
+  "termsAndConditions": "الشروط والأحكام",
+  "andPrivacyPolicy": " وسياسة الخصوصية",
+  "agreeToTerms": "أوافق على الشروط والأحكام",
+  "cancel": "إلغاء",
+  "confirm": "تأكيد",
+  "resetSentTitle": "تم الإرسال!",
+  "resetSentBodyPrefix": "تم إرسال رمز استعادة الحساب إلى",
+  "checkInbox": "تحقق من صندوق البريد الوارد والبريد المزعج.",
+  "backToLogin": "العودة لتسجيل الدخول",
+  "rememberPassword": "تذكرتها؟",
+  "resetLinkExpiry": "الرمز صالح لمدة 15 دقيقة فقط",
+  "resetPasswordTitle": "تعيين كلمة مرور جديدة",
+  "resetPasswordSubtitle": "أدخل الرمز المُرسل إلى بريدك مع كلمة المرور الجديدة",
+  "passwordResetSuccess": "تم تغيير كلمة المرور بنجاح، يمكنك تسجيل الدخول",
+
+  "loginError": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+  "genericError": "حدث خطأ، يرجى المحاولة مجدداً",
+  "invalidEmailError": "يرجى إدخال بريد إلكتروني صحيح",
+  "registerError": "حدث خطأ في الاتصال، يرجى المحاولة مجدداً",
+  "otpIncompleteError": "يرجى إدخال رمز التحقق كاملاً",
+  "otpInvalidError": "رمز التحقق غير صحيح، يرجى المحاولة مجدداً",
+  "otpResendError": "فشل إعادة إرسال الرمز، حاول مرة أخرى",
+
+  "validFullNameRequired": "يرجى إدخال الاسم الكامل",
+  "validFullNameMin": "الاسم الكامل يجب أن يكون 3 أحرف على الأقل",
+  "validUsernameRequired": "يرجى إدخال اسم المستخدم",
+  "validUsernameMin": "اسم المستخدم يجب أن يكون 3 أحرف على الأقل",
+  "validPhoneRequired": "يرجى إدخال رقم الجوال",
+  "validPhoneInvalid": "رقم الجوال غير صحيح",
+  "validEmailRequired": "يرجى إدخال البريد الالكتروني",
+  "validEmailInvalid": "صيغة البريد الالكتروني غير صحيحة",
+  "validPasswordRequired": "يرجى إدخال كلمة المرور",
+  "validPasswordMin": "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
+  "validConfirmPasswordRequired": "يرجى تأكيد كلمة المرور",
+  "validPasswordMismatch": "كلمتا المرور غير متطابقتين",
+  "validTermsRequired": "يجب الموافقة على الشروط والأحكام للمتابعة",
+
+  "homeSearchHint": "ابحث عن رومات ونقاشات...",
+
+  "communityTitle": "مجتمع {countryName}",
+  "@communityTitle": {
+    "placeholders": {
+      "countryName": { "type": "String" }
+    }
+  },
+  "communitySearchHint": "ابحث عن الرومات الصوتية...",
+  "filterAll": "الكل",
+  "filterAcademic": "أكاديمي",
+  "filterSocial": "اجتماعي",
+  "filterLegal": "قانوني",
+  "filterCultural": "ثقافي",
+  "noRoomsAvailable": "لا توجد روم متاحة حالياً",
+
+  "notificationsTitle": "الإشعارات",
+  "markAllRead": "تحديد الكل مقروء",
+  "noNotifications": "لا توجد إشعارات",
+  "noNotificationsSub": "ستظهر إشعاراتك هنا عند وصولها",
+  "today": "اليوم",
+  "yesterday": "أمس",
+  "earlier": "سابقاً",
+  "timeNow": "الآن",
+  "minutesAgo": "منذ {count} د",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "hoursAgo": "منذ {count} س",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "settingsTitle": "الإعدادات",
+  "appLanguage": "لغة التطبيق",
+  "language": "اللغة",
+  "arabic": "العربية",
+  "english": "الإنجليزية",
+  "help": "مساعدة",
+  "aboutApp": "عن التطبيق",
+  "logout": "تسجيل الخروج",
+  "logoutConfirmTitle": "تسجيل الخروج",
+  "logoutConfirmBody": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+  "logoutConfirm": "خروج",
+  "deleteAccount": "حذف الحساب",
+  "deleteAccountConfirmTitle": "تأكيد حذف الحساب نهائياً",
+  "deleteAccountConfirmBody": "تحذير: هذا الإجراء سيقوم بحذف حسابك وكافة بياناتك المسجلة في منصة مبتعث بشكل نهائي ولا يمكن التراجع عنه. هل أنت متأكد؟",
+  "deleteAccountConfirm": "حذف نهائي",
+  "deleteAccountError": "تعذّر حذف الحساب، يرجى المحاولة مجدداً",
+  "appVersion": "الإصدار",
+
+  "prayerTimesTitle": "أوقات الصلاة",
+  "fajr": "الفجر",
+  "sunrise": "الشروق",
+  "dhuhr": "الظهر",
+  "asr": "العصر",
+  "maghrib": "المغرب",
+  "isha": "العشاء",
+  "nextPrayer": "الصلاة القادمة",
+  "timeRemaining": "الوقت المتبقي",
+  "loadingLocation": "جارٍ تحديد الموقع...",
+  "locationError": "تعذّر تحديد الموقع",
+  "qiblaDirection": "اتجاه القبلة",
+  "kaabaDirection": "اتجاه الكعبة المشرفة",
+  "knowKaabaDirection": "اعرف اتجاه الكعبة المشرفة",
+  "fromNorth": "من الشمال",
+  "timePeriodAm": "ص",
+  "timePeriodPm": "م",
+
+  "qiblaTitle": "القبلة",
+  "pointToKaaba": "وجّه الجهاز نحو القبلة",
+  "liveCompass": "البوصلة الحية",
+  "compassInstruction": "وجّه هاتفك حتى يشير السهم الذهبي نحو الكعبة المشرفة",
+  "directionLabel": "الاتجاه",
+  "qiblaLabel": "القبلة",
+  "calibrating": "جارٍ المعايرة...",
+  "degreeFromNorth": "{degree}° من الشمال",
+  "@degreeFromNorth": {
+    "placeholders": {
+      "degree": { "type": "String" }
+    }
+  },
+  "locationPermissionMsg": "يرجى منح إذن الموقع من إعدادات الجهاز",
+  "openSettings": "فتح الإعدادات",
+  "howToUse": "كيفية الاستخدام",
+  "qiblaInstructions": "• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• السهم الذهبي 🕋 يشير إلى اتجاه القبلة",
+  "staticCompassNote": "اتجاه القبلة (حسابي)",
+  "prayersComplete": "أُكمِلت صلوات اليوم",
+
+  "studentGuideTitle": "دليل الطالب",
+  "studentGuideSearchHint": "ابحث في الدليل...",
+  "linksCount": "{count} روابط",
+  "@linksCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "itemsCount": "{count} عناصر",
+  "@itemsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "studentTipLabel": "نصيحة المبتعث",
+  "studentTipBody": "احتفظ دائماً بنسخة من جواز سفرك وبيانات السفارة في هاتفك",
+  "resultsCount": "{count} نتيجة",
+  "@resultsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mainSections": "الأقسام الرئيسية",
+  "guideCategoryEmbassy": "السفارة والقنصليات",
+  "guideCategoryEmergency": "خدمات الطوارئ",
+  "guideCategoryLegal": "الدعم القانوني",
+  "guideCategoryHousing": "دليل السكن",
+  "guideCategoryHealth": "التأمين الصحي",
+  "guideCategoryTransport": "المواصلات",
+
+  "profileTitle": "الملف الشخصي",
+  "editProfile": "تعديل الملف",
+  "saveChanges": "حفظ التغييرات",
+  "savedSuccess": "تم الحفظ",
+  "saveError": "فشل حفظ البيانات، حاول مجدداً",
+  "selectCountry": "اختر الدولة",
+  "selectYourCountry": "اختر دولتك",
+  "selectCountrySubtitle": "لنتمكن من تجهيز الخدمات المناسبة لك",
+  "countrySelected": "تم اختيار {country}",
+  "@countrySelected": {
+    "placeholders": {
+      "country": { "type": "String" }
+    }
+  },
+  "continueButton": "متابعة",
+  "fieldBio": "النبذة",
+  "fieldFullName": "الأسم الكامل",
+  "fieldCountry": "الدولة",
+  "changePassword": "تغيير كلمة المرور",
+  "currentPassword": "كلمة المرور الحالية",
+  "currentPasswordHint": "أدخل كلمة مرورك الحالية",
+  "newPassword": "كلمة المرور الجديدة",
+  "newPasswordHint": "أدخل كلمة مرور جديدة",
+
+  "speakerRole": "متحدث",
+  "speakersCount": "{count} متحدثين",
+  "@speakersCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "roomDescription": "وصف الروم",
+  "speakersLabel": "المتحدثين",
+  "joinRoom": "الانضمام",
+  "moreSpeakers": "+ {count} متحدثين آخرين",
+  "@moreSpeakers": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "chatTab": "الشات",
+  "messagePlaceholder": "اكتب رسالتك...",
+  "liveRoomBadge": "روم مباشر",
+  "listenersNow": "{count} مستمع الآن",
+  "@listenersNow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "mubtaathTitle": "مبتعث",
+  "mubtaathTagline": "المجتمع الصوتي للمبتعثين السعوديين",
+
+  "microphonePermissionRequired": "يرجى منح إذن الميكروفون للمتابعة",
+  "participants": "المشاركون",
+  "connecting": "جارٍ الاتصال...",
+  "connected": "متصل",
+  "audioConnectionError": "تعذّر الاتصال بالصوت",
+  "agoraConnectivityWarning": "تحذير الاتصال الصوتي",
+  "agoraConnectivityWarningBody": "تعذّر بدء الصوت. اتصال الصوت غير متاح حالياً.",
+  "noParticipantsYet": "لا يوجد مشاركون بعد",
+  "tapMicToSpeak": "اضغط على الميكروفون للتحدث",
+  "leaveRoom": "مغادرة الروم",
+  "audioOutput": "مخرج الصوت",
+  "audioOutputSpeaker": "السماعة الخارجية",
+  "audioOutputEarpiece": "سماعة الأذن",
+
+  "helpAndSupport": "المساعدة والدعم",
+  "reportUser": "الإبلاغ عن مستخدم",
+  "reportMessage": "الإبلاغ عن رسالة",
+  "reportCategory": "فئة البلاغ",
+  "categoryTechnical": "مشكلة تقنية",
+  "categorySuggestion": "اقتراح",
+  "categoryComplaint": "شكوى",
+  "categoryInappropriate": "سلوك غير لائق",
+  "categorySpam": "إزعاج أو سبام",
+  "describeIssue": "وصف المشكلة",
+  "describeIssueHint": "اكتب تفاصيل المشكلة...",
+  "submitReport": "إرسال البلاغ",
+  "reportSubmittedTitle": "تم إرسال البلاغ",
+  "reportSubmittedBody": "شكراً، سنراجع البلاغ في أقرب وقت ممكن",
+  "reportingUser": "الإبلاغ عن مستخدم",
+  "reportingMessage": "الإبلاغ عن رسالة",
+  "selectCategory": "اختر الفئة",
+  "descriptionRequired": "يرجى كتابة وصف للمشكلة",
+  "categoryRequired": "يرجى اختيار فئة",
+  "reportSentSuccess": "تم إرسال البلاغ بنجاح",
+  "reportSentError": "تعذّر إرسال البلاغ، يرجى المحاولة مجدداً",
+  "viewProfile": "عرض الملف الشخصي",
+  "userProfile": "الملف الشخصي",
+
+  "newReport": "بلاغ جديد",
+  "myReports": "بلاغاتي",
+  "statusPending": "قيد الانتظار",
+  "statusResolved": "تم الحل",
+  "statusDismissed": "مرفوض",
+  "statusUnderReview": "قيد المراجعة",
+  "adminReply": "رد المشرف",
+  "noReportsYet": "لا توجد بلاغات بعد",
+  "noReportsSubtitle": "ستظهر بلاغاتك هنا بعد إرسالها",
+
+  "ticketDetails": "تفاصيل التذكرة",
+  "yourIssue": "مشكلتك",
+  "yourReply": "ردك",
+  "replyToAdmin": "الرد على المشرف",
+  "replySentSuccess": "تم إرسال ردك بنجاح",
+  "conversationThread": "المحادثة",
+  "noMessagesYet": "لا توجد رسائل بعد",
+  "tryAgain": "حاول مجدداً",
+
+  "floatingMessages": "الرسائل العائمة",
+  "kickedFromRoom": "تمّ إخراجك من الغرفة",
+  "kickedFromRoomBody": "قام المشرف بإزالتك من هذه الغرفة.",
+  "tempBannedFromRoom": "حظر مؤقت",
+  "tempBannedFromRoomBody": "تمّ حظرك مؤقتاً عن هذه الغرفة.",
+
+  "attendeesLabel": "الحضور",
+  "attendeesCount": "{count} حاضر",
+  "@attendeesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "moreAttendees": "+{count} آخرين",
+  "@moreAttendees": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attendeesNow": "{count} يستمعون الآن",
+  "@attendeesNow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "moderatorBadge": "مشرف",
+  "ghostModeEnabled": "وضع التخفي مفعّل — أنت غير مرئي في الغرفة",
+  "ghostModeDisabled": "وضع التخفي ملغى — أنت ظاهر في الغرفة",
+  "viewProfile": "الدخول للملف الشخصي",
+  "audioOutput": "مخرج الصوت",
+  "loudspeaker": "مكبر الصوت",
+  "earpiece": "السماعة العلوية للهاتف",
+  "roomFull": "عذراً، وصلت الغرفة للحد الأقصى من الحضور"
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration
+  ================================
+  Permits cleartext (HTTP) traffic only to local development hosts.
+  All other traffic — including production API — must use HTTPS.
+
+  Hosts allowed for cleartext:
+    10.0.2.2   — Android emulator loopback to host machine
+    10.0.3.2   — Genymotion emulator loopback to host machine
+    localhost  — Physical device when connected via ADB reverse port forward
+-->
+<network-security-config>
+
+    <!-- Production: HTTPS only (system default on API 28+) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+
+    <!-- Android emulator → host machine Laravel server -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <!-- Genymotion emulator → host machine -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.3.2</domain>
+    </domain-config>
+
+    <!-- ADB reverse forwarding (adb reverse tcp:8000 tcp:8000) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+
+    <!-- Physical device over LAN: add your machine's IP here during testing
+         Example: <domain includeSubdomains="false">192.168.1.100</domain>
+    -->
+
+</network-security-config>
