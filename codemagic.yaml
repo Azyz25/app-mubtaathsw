@@ -1,0 +1,90 @@
+# =============================================================================
+# Mubtaath — Codemagic CI/CD  (Flutter app: iOS + Android)
+# App / Bundle ID: com.mubtaathub.app
+# Place this file in the repository ROOT, then: git add codemagic.yaml && commit && push
+# =============================================================================
+#
+# BEFORE the iOS build can sign & upload, configure these in Codemagic ONCE:
+#   1. Apple Developer Program membership (99$/yr) is REQUIRED for any iOS build.
+#   2. Codemagic UI → Team settings → Integrations → Developer Portal → add your
+#      App Store Connect API key (.p8). Give it a NAME and put that name below
+#      at <<<ASC_KEY_NAME>>>.
+#   3. In App Store Connect create an App record with bundle id com.mubtaathub.app,
+#      then copy its numeric "Apple ID" (App Information → General) into
+#      <<<APP_STORE_APPLE_ID>>> below.
+#   4. Replace <<<your@email.com>>> with your email.
+#
+# Signing is AUTOMATIC: Codemagic creates/fetches the certificate + provisioning
+# profile for com.mubtaathub.app using the API key. No manual .p12 upload needed.
+# =============================================================================
+
+workflows:
+
+  # ---------------------------------------------------------------------------
+  #  iOS  →  TestFlight (trial testing)
+  # ---------------------------------------------------------------------------
+  ios-testflight:
+    name: Mubtaath iOS (TestFlight)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: <<<ASC_KEY_NAME>>>          # the API key NAME from step 2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store                 # app_store = TestFlight/Store | ad_hoc = direct device install
+        bundle_identifier: com.mubtaathub.app
+      vars:
+        APP_STORE_APPLE_ID: <<<APP_STORE_APPLE_ID>>>  # numeric Apple ID from step 3
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Set up iOS code signing (auto profiles)
+        script: xcode-project use-profiles
+      - name: Build signed IPA (auto build number)
+        script: |
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          flutter build ipa --release \
+            --build-number=$(($LATEST + 1)) \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - <<<your@email.com>>>
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true                   # push the build to TestFlight after upload
+        # beta_groups:                               # uncomment + name your internal tester group(s)
+        #   - Internal Testers
+
+  # ---------------------------------------------------------------------------
+  #  Android  →  release APK (bonus — build in the cloud, no local SSL/gradle issues)
+  # ---------------------------------------------------------------------------
+  android-apk:
+    name: Mubtaath Android (APK)
+    max_build_duration: 90
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build release APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+    publishing:
+      email:
+        recipients:
+          - <<<your@email.com>>>
+        notify:
+          success: true
+          failure: true
