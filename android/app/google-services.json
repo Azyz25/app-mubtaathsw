@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "790654896955",
+    "project_id": "mubtaath-1",
+    "storage_bucket": "mubtaath-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:790654896955:android:30d2a2183d717f336ec51e",
+        "android_client_info": {
+          "package_name": "com.mubtaathub.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRsumKOMARWpdRvKiZHg9S3g-BUQVYqSs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
