@@ -45,6 +45,7 @@ const _kAllowedRoutePrefixes = {
   '/qibla',
   '/audio-room/',
   '/support',
+  '/settings',
 };
 
 bool _isSafeRoute(String? route) {
@@ -188,19 +189,32 @@ class NotifModel {
       sentAt:           sentAt,
       isRead:           isRead,
       isFeatured:       false,
-      routeOnTap:       _deriveRoute(notifType),
+      routeOnTap:       _deriveRoute(
+        notifType,
+        j['actionType']?.toString(),
+        j['actionTarget']?.toString(),
+      ),
       imageUrl:         j['imageUrl']?.toString(),
       notificationType: notifType,
       relatedId:        relatedId,
     );
   }
 
-  // Derive a route from the machine-readable notificationType.
-  // Support-related types all go to the support page (history tab).
-  static String? _deriveRoute(String? notifType) => switch (notifType) {
-    'support_reply' || 'status_change' || 'warning' || 'ban' => '/support',
-    _ => null,
-  };
+  // Derive a route from, in priority order:
+  //  1. actionType/actionTarget — the admin-configured tap-target on a
+  //     broadcast notification ('page' → a named route, 'room' → a room id).
+  //  2. The machine-readable notificationType on auto-generated notifications
+  //     (report replies, status changes, ...) — these always go to Support.
+  static String? _deriveRoute(String? notifType, String? actionType, String? actionTarget) {
+    if (actionTarget != null && actionTarget.isNotEmpty) {
+      if (actionType == 'page') return actionTarget;
+      if (actionType == 'room') return '/room/$actionTarget';
+    }
+    return switch (notifType) {
+      'support_reply' || 'status_change' || 'warning' || 'ban' => '/support',
+      _ => null,
+    };
+  }
 
   // Pick the correct NotifType enum from notificationType first,
   // then fall back to the category string for broadcast notifications.

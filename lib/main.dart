@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -84,9 +86,19 @@ Future<void> _initFcmLocalNotifications() async {
   );
   await _fcmLocalNotifications.initialize(
     const InitializationSettings(android: androidInit, iOS: darwinInit),
+    // Payload is JSON-encoded (see _showForegroundNotification) so a single
+    // string can carry both the legacy `type` and the newer actionType/
+    // actionTarget tap-target fields through flutter_local_notifications'
+    // single-string payload.
     onDidReceiveNotificationResponse: (resp) {
-      final type = resp.payload;
-      if (type != null && type.isNotEmpty) _routeByType(type);
+      final raw = resp.payload;
+      if (raw == null || raw.isEmpty) return;
+      try {
+        _routeFromNotificationData(jsonDecode(raw) as Map<String, dynamic>);
+      } catch (_) {
+        // Pre-upgrade payloads were a bare type string — fall back to that.
+        _routeByType(raw);
+      }
     },
   );
   final android = _fcmLocalNotifications.resolvePlatformSpecificImplementation<
@@ -128,13 +140,36 @@ void _showForegroundNotification(RemoteMessage message) {
         presentSound: true,
       ),
     ),
-    payload: message.data['type'] as String?,
+    payload: jsonEncode({
+      'type':         message.data['type'],
+      'actionType':   message.data['actionType'],
+      'actionTarget': message.data['actionTarget'],
+    }),
   );
 }
 
 // ── Route on FCM payload type (notification tap) ───────────────────────────
 void _handleMessageNavigation(RemoteMessage message) {
-  _routeByType(message.data['type'] as String?);
+  _routeFromNotificationData(message.data);
+}
+
+// Shared by both tap paths: FCM's native system-tray tap (RemoteMessage.data,
+// background/terminated) and flutter_local_notifications' tap on a push we
+// rendered ourselves while the app was foregrounded (JSON-decoded payload —
+// see _showForegroundNotification). Admin-configured tap-target takes
+// priority — 'page' pushes a named app route, 'room' opens that room
+// directly. Falls back to the machine-readable `type` used by auto-generated
+// notifications (report replies, status changes, ...).
+void _routeFromNotificationData(Map<String, dynamic> data) {
+  final actionType   = data['actionType'] as String?;
+  final actionTarget = data['actionTarget'] as String?;
+  if ((actionType == 'page' || actionType == 'room') &&
+      actionTarget != null &&
+      actionTarget.isNotEmpty) {
+    appRouter.push(actionType == 'room' ? '/room/$actionTarget' : actionTarget);
+    return;
+  }
+  _routeByType(data['type'] as String?);
 }
 
 void _routeByType(String? type) {
