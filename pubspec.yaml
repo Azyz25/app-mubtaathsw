@@ -56,7 +56,6 @@ dependencies:
 
   # ─── Permissions & Device ───────────────────────────────────
   permission_handler: ^11.3.1 # Microphone, notification permissions
-  record: ^5.1.1 # Audio recording (voice feature)
   just_audio: ^0.9.40 # Audio playback
 
   # ─── Localization (ar / en — RTL/LTR) ──────────────────────────
@@ -103,7 +102,7 @@ flutter:
   generate: true
   config:
     enable-swift-package-manager: false
-    
+
   assets:
     - assets/images/
     - assets/icons/
