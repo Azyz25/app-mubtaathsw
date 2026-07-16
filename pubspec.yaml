@@ -100,8 +100,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  generate: true  # enables flutter gen-l10n via l10n.yaml
-
+  generate: true
+  config:
+    enable-swift-package-manager: false
+    
   assets:
     - assets/images/
     - assets/icons/
