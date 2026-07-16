@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/audio_room/presentation/cubit/audio_room_cubit.dart';
 import 'package:mubtaath/features/audio_room/presentation/cubit/audio_room_state.dart';
 import 'package:mubtaath/features/audio_room/presentation/widgets/speaker_tile.dart';
@@ -309,7 +310,7 @@ class _EmptyParticipants extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isConnecting)
-            const CircularProgressIndicator(
+            const MubtaathLoader(
               color: Colors.white54,
               strokeWidth: 2.5,
             )

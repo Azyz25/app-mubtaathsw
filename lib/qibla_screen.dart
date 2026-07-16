@@ -14,11 +14,13 @@ import 'dart:math' as math;
 import 'package:adhan/adhan.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geocoding/geocoding.dart' as geo;
 import 'package:geolocator/geolocator.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/services/location_cache_service.dart';
 import 'package:mubtaath/core/utils/nominatim_geocoder.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
@@ -54,9 +56,40 @@ class QiblaState {
 
 class QiblaCubit extends Cubit<QiblaState> {
   QiblaCubit() : super(const QiblaState()) {
-    _load();
+    _init();
   }
 
+  double? _lat;
+  double? _lng;
+
+  // ── Init: instant from cache when available, GPS only the first time ───────
+  // Mirrors PrayerCubit's approach — opening the page should never block on
+  // a fresh GPS fix + reverse-geocode if we already know where the device is.
+  Future<void> _init() async {
+    if (isClosed) return;
+
+    final cached = await LocationCacheService.instance.read();
+    if (isClosed) return;
+
+    if (cached != null) {
+      _lat = cached.lat;
+      _lng = cached.lng;
+      final coords = Coordinates(cached.lat, cached.lng);
+      final angle  = Qibla(coords).direction;
+      emit(QiblaState(
+        status:        QiblaStatus.loaded,
+        qiblaAngle:    angle,
+        locationLabel: cached.cityAr.isNotEmpty ? cached.cityAr : cached.cityEn,
+      ));
+      unawaited(_refreshLocationInBackground());
+      return;
+    }
+
+    await _load();
+  }
+
+  // ── Full GPS fetch + geocode + cache write (cold start, retry, or the
+  //    background check finding a real move). ────────────────────────────────
   Future<void> _load() async {
     if (isClosed) return;
     emit(const QiblaState(status: QiblaStatus.loading));
@@ -83,7 +116,7 @@ class QiblaCubit extends Cubit<QiblaState> {
     Position pos;
     try {
       pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 20),
       );
     } catch (_) {
@@ -93,8 +126,12 @@ class QiblaCubit extends Cubit<QiblaState> {
     }
     if (isClosed) return;
 
+    _lat = pos.latitude;
+    _lng = pos.longitude;
+
     String labelAr = '';
     String labelEn = '';
+    String isoCode = 'GB';
 
     // 1. Local geocoding — fast on real devices, fails silently on web/simulators.
     try {
@@ -104,6 +141,7 @@ class QiblaCubit extends Cubit<QiblaState> {
       if (isClosed) return;
       if (places.isNotEmpty) {
         final p = places.first;
+        isoCode = p.isoCountryCode ?? 'GB';
         String local = '';
         if (p.locality?.isNotEmpty == true) {
           local = p.locality!;
@@ -131,11 +169,48 @@ class QiblaCubit extends Cubit<QiblaState> {
     final coords = Coordinates(pos.latitude, pos.longitude);
     final angle  = Qibla(coords).direction;
 
+    await LocationCacheService.instance.write(CachedLocation(
+      lat: pos.latitude, lng: pos.longitude, isoCode: isoCode,
+      cityAr: labelAr, cityEn: labelEn,
+    ));
+    if (isClosed) return;
+
     emit(QiblaState(
       status:        QiblaStatus.loaded,
       qiblaAngle:    angle,
       locationLabel: labelAr.isNotEmpty ? labelAr : labelEn,
     ));
+  }
+
+  // ── Silent background check — only touches the UI if the device has
+  //    actually moved a meaningful distance since the cached fix. ───────────
+  Future<void> _refreshLocationInBackground() async {
+    try {
+      final svcEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!svcEnabled || isClosed) return;
+
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        timeLimit: const Duration(seconds: 20),
+      );
+      if (isClosed) return;
+
+      final movedMeters = (_lat != null && _lng != null)
+          ? Geolocator.distanceBetween(_lat!, _lng!, pos.latitude, pos.longitude)
+          : double.infinity;
+      if (movedMeters < LocationCacheService.significantMoveMeters) return;
+
+      // A real move — re-fetch properly (re-geocodes + re-caches + re-emits).
+      await _load();
+    } catch (_) {
+      // Silent — the cached data already on screen remains valid either way.
+    }
   }
 
   void retry() => _load();
@@ -146,18 +221,24 @@ class QiblaCubit extends Cubit<QiblaState> {
 // =============================================================================
 
 class _QiblaDialPainter extends CustomPainter {
-  final double needleAngleRad;
+  final double heading;      // smoothed device heading (degrees from north)
+  final double qiblaAngle;   // qibla bearing from north (degrees)
+  final bool   isAligned;    // true when the phone is facing the Qibla
   final Color  primaryColor;
-  final Color  secondaryColor;
+  final Color  accentColor;  // Kaaba marker riding the needle tip
   final Color  bgColor;
   final Color  borderColor;
+  final Color  alignedColor; // fills the whole dial when facing the Qibla
 
   const _QiblaDialPainter({
-    required this.needleAngleRad,
+    required this.heading,
+    required this.qiblaAngle,
+    required this.isAligned,
     required this.primaryColor,
-    required this.secondaryColor,
+    required this.accentColor,
     required this.bgColor,
     required this.borderColor,
+    required this.alignedColor,
   });
 
   @override
@@ -165,26 +246,37 @@ class _QiblaDialPainter extends CustomPainter {
     final cx = size.width  / 2;
     final cy = size.height / 2;
     final r  = size.width  / 2 - 2;
+    final center = Offset(cx, cy);
 
-    canvas.drawCircle(
-      Offset(cx, cy), r,
-      Paint()..color = bgColor..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      Offset(cx, cy), r,
-      Paint()
-        ..color       = borderColor
-        ..style       = PaintingStyle.stroke
-        ..strokeWidth = 1.8,
-    );
-    canvas.drawCircle(
-      Offset(cx, cy), r * 0.88,
-      Paint()
-        ..color       = primaryColor.withValues(alpha: 0.08)
-        ..style       = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
+    final needleRad = (qiblaAngle - heading) * math.pi / 180;
 
+    // ── Dial background — turns SOLID GREEN when facing the Qibla ──────────────
+    canvas.drawCircle(
+      center, r,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = isAligned ? alignedColor : bgColor,
+    );
+    canvas.drawCircle(
+      center, r,
+      Paint()
+        ..style       = PaintingStyle.stroke
+        ..strokeWidth = isAligned ? 2.6 : 1.8
+        ..color       = isAligned ? alignedColor : borderColor,
+    );
+    if (!isAligned) {
+      canvas.drawCircle(
+        center, r * 0.88,
+        Paint()
+          ..color       = primaryColor.withValues(alpha: 0.08)
+          ..style       = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
+    }
+
+    // ── Compass rose (ticks + cardinals) — screen-fixed, does not rotate ──────
+    final minorTick = isAligned ? AppColors.white.withValues(alpha: 0.45) : borderColor;
+    final majorTick = isAligned ? AppColors.white : primaryColor.withValues(alpha: 0.55);
     for (var i = 0; i < 72; i++) {
       final a     = i * 5 * math.pi / 180;
       final isMaj = i % 18 == 0;
@@ -195,8 +287,8 @@ class _QiblaDialPainter extends CustomPainter {
         Offset(cx + (r - 3) * math.sin(a), cy - (r - 3) * math.cos(a)),
         Paint()
           ..color = isMaj
-              ? primaryColor.withValues(alpha: 0.55)
-              : borderColor.withValues(alpha: isMed ? 0.70 : 0.40)
+              ? majorTick
+              : minorTick.withValues(alpha: isMed ? 0.70 : 0.40)
           ..strokeWidth = isMaj ? 1.8 : isMed ? 1.2 : 0.7,
       );
     }
@@ -211,9 +303,11 @@ class _QiblaDialPainter extends CustomPainter {
           text: e.key,
           style: TextStyle(
             fontSize: 13, fontWeight: FontWeight.w800,
-            color: e.key == 'N'
-                ? primaryColor
-                : borderColor.withValues(alpha: 200 / 255),
+            color: isAligned
+                ? AppColors.white.withValues(alpha: e.key == 'N' ? 1.0 : 0.72)
+                : (e.key == 'N'
+                    ? primaryColor
+                    : borderColor.withValues(alpha: 200 / 255)),
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -221,71 +315,52 @@ class _QiblaDialPainter extends CustomPainter {
       tp.paint(canvas, Offset(dx - tp.width / 2, dy - tp.height / 2));
     }
 
+    // ── Needle — ONE colour, same big length on BOTH ends ─────────────────────
+    final needleColor = isAligned ? AppColors.white : primaryColor;
+    final len = r - 42;
     canvas.save();
     canvas.translate(cx, cy);
-    canvas.rotate(needleAngleRad);
-
-    final goldPath = Path()
-      ..moveTo(0, -(r - 26))
-      ..lineTo(-7, -6)
-      ..lineTo(0, 10)
-      ..lineTo(7, -6)
-      ..close();
+    canvas.rotate(needleRad);
+    // Qibla-pointing end (solid).
     canvas.drawPath(
-      goldPath,
-      Paint()..color = secondaryColor..style = PaintingStyle.fill,
-    );
-    canvas.drawPath(
-      goldPath,
+      Path()..moveTo(0, -len)..lineTo(-8, 0)..lineTo(8, 0)..close(),
       Paint()
-        ..color       = AppColors.black.withValues(alpha: 0.12)
-        ..style       = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
+        ..color      = needleColor
+        ..style      = PaintingStyle.fill
+        ..strokeJoin = StrokeJoin.round,
     );
-
-    final greenPath = Path()
-      ..moveTo(0, 10)
-      ..lineTo(-5, 0)
-      ..lineTo(0, -(r - 46))
-      ..lineTo(5, 0)
-      ..close();
+    // Opposite end — SAME big length, faded (still one colour).
     canvas.drawPath(
-      greenPath,
+      Path()..moveTo(0, len)..lineTo(-8, 0)..lineTo(8, 0)..close(),
       Paint()
-        ..color = primaryColor.withValues(alpha: 0.50)
-        ..style = PaintingStyle.fill,
+        ..color      = needleColor.withValues(alpha: 0.32)
+        ..style      = PaintingStyle.fill
+        ..strokeJoin = StrokeJoin.round,
     );
-
     canvas.restore();
 
-    final kx  = cx + (r - 34) * math.sin(needleAngleRad);
-    final ky  = cy - (r - 34) * math.cos(needleAngleRad);
-    final ktp = TextPainter(
-      text: const TextSpan(text: '🕋', style: TextStyle(fontSize: 16)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    ktp.paint(canvas, Offset(kx - ktp.width / 2, ky - ktp.height / 2));
+    // ── Outline Kaaba marker riding the Qibla-pointing tip ─────────────────────
+    final kx = cx + (r - 30) * math.sin(needleRad);
+    final ky = cy - (r - 30) * math.cos(needleRad);
+    paintKaabaGlyph(
+      canvas, Offset(kx, ky), 16,
+      isAligned ? AppColors.white : accentColor,
+      strokeWidth: 2,
+    );
 
+    // ── Center hub ────────────────────────────────────────────────────────────
+    canvas.drawCircle(center, 7, Paint()..color = needleColor);
     canvas.drawCircle(
-      Offset(cx, cy), 9,
-      Paint()..color = primaryColor..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      Offset(cx, cy), 4,
-      Paint()..color = AppColors.white..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      Offset(cx, cy), 9,
-      Paint()
-        ..color       = secondaryColor.withValues(alpha: 0.40)
-        ..style       = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+      center, 3,
+      Paint()..color = isAligned ? alignedColor : AppColors.white,
     );
   }
 
   @override
   bool shouldRepaint(_QiblaDialPainter old) =>
-      old.needleAngleRad != needleAngleRad;
+      old.heading    != heading    ||
+      old.qiblaAngle != qiblaAngle ||
+      old.isAligned  != isAligned;
 }
 
 // =============================================================================
@@ -305,19 +380,20 @@ class _ValuePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Clean, solid chips — no light-tint-with-matching-border look.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       decoration: BoxDecoration(
-        color:        isHighlighted
-            ? AppColors.secondary.withValues(alpha: 0.12)
-            : AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isHighlighted
-              ? AppColors.secondary.withValues(alpha: 0.35)
-              : AppColors.primary.withValues(alpha: 0.20),
-          width: 1.0,
-        ),
+        color:        isHighlighted ? AppColors.secondary : AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (isHighlighted ? AppColors.secondary : AppColors.primary)
+                .withValues(alpha: isHighlighted ? 0.28 : 0.08),
+            blurRadius: 12,
+            offset:     const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -325,16 +401,18 @@ class _ValuePill extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.w800,
-              color: isHighlighted ? AppColors.secondary : AppColors.primary,
+              fontFamily: 'Cairo', fontSize: 17, fontWeight: FontWeight.w800,
+              color: isHighlighted ? AppColors.white : AppColors.primary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Tajawal', fontSize: 11,
-              color: AppColors.textSecondary,
+              color: isHighlighted
+                  ? AppColors.white.withValues(alpha: 0.85)
+                  : AppColors.textSecondary,
             ),
           ),
         ],
@@ -356,44 +434,42 @@ class _StaticQiblaFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    // Needle points at the Qibla bearing from True North (fixed, no device heading)
-    final needleRad = qiblaAngle * (math.pi / 180);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width:  220,
-          height: 220,
+          width:  240,
+          height: 240,
           child: CustomPaint(
+            // No live heading here — north-up dial, needle at the Qibla bearing.
             painter: _QiblaDialPainter(
-              needleAngleRad: needleRad,
-              primaryColor:   AppColors.primary,
-              secondaryColor: AppColors.secondary,
-              bgColor:        AppColors.background,
-              borderColor:    AppColors.cardBorder,
+              heading:      0,
+              qiblaAngle:   qiblaAngle,
+              isAligned:    false,
+              primaryColor: AppColors.primary,
+              accentColor:  AppColors.secondary,
+              bgColor:      AppColors.background,
+              borderColor:  AppColors.cardBorder,
+              alignedColor: AppColors.primary,
             ),
           ),
         ),
         const SizedBox(height: 16),
 
-        // Info card
+        // Info card — clean surface, soft shadow (no tinted-border box)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.secondary.withValues(alpha: 0.10),
-                AppColors.primary.withValues(alpha: 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.secondary.withValues(alpha: 0.28),
-              width: 1.0,
-            ),
+            color:        AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color:      AppColors.primary.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset:     const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -446,16 +522,89 @@ class _LiveQiblaCompass extends StatefulWidget {
   State<_LiveQiblaCompass> createState() => _LiveQiblaCompassState();
 }
 
-class _LiveQiblaCompassState extends State<_LiveQiblaCompass> {
-  bool   _sensorTimedOut   = false;
-  bool   _hasReceivedData  = false;
+class _LiveQiblaCompassState extends State<_LiveQiblaCompass>
+    with SingleTickerProviderStateMixin {
+  bool   _sensorTimedOut  = false;
+  bool   _hasReceivedData = false;
   Timer? _timeoutTimer;
+
+  late final AnimationController _ticker;
+
+  // smooth_compass polls the native sensor on a fixed ~200ms interval — that
+  // is a hard floor on how often the true heading can change, regardless of
+  // anything on our side. Rather than low-pass filtering on top of that
+  // (which *adds* extra lag chasing an ever-moving target), we linearly
+  // interpolate between consecutive raw samples over exactly that interval:
+  // the displayed heading always reaches the real value by the time the next
+  // sample arrives, so perceived lag never exceeds one sample (~200ms) — and
+  // motion between samples is still perfectly smooth.
+  static const int _sampleIntervalMs = 200;
+  double?   _segFrom;    // heading at the start of the current segment
+  double?   _segTo;      // latest raw sample — the segment's target
+  DateTime? _segStartAt; // wall-clock time the current segment began
+  double    _displayHeading = 0;
+  bool      _wasAligned = false;
+
+  static const double _alignThresholdDeg = 5;
+
+  // ── Calibration-needed detection ────────────────────────────────────────
+  // smooth_compass exposes no sensor-accuracy signal at all (it reads
+  // Android's fused ROTATION_VECTOR sensor with no accuracy callback), so we
+  // infer "needs calibration" ourselves: a magnetometer confused by nearby
+  // interference makes the heading reverse direction sharply and repeatedly
+  // (jumps back and forth) — unlike a real hand rotation, which accelerates
+  // and decelerates smoothly in ONE direction. Two such reversals in the
+  // last 8 samples (~1.6s) is a strong tell.
+  double?          _lastRawHeading;
+  final List<double> _recentDeltas = [];
+  static const int   _deltaWindowSize = 8;
+  static const double _bigJumpDeg = 25;
+  bool _needsCalibration = false;
+
+  double _lerpAngle(double a, double b, double t) {
+    var diff = b - a;
+    while (diff > 180)  { diff -= 360; }
+    while (diff < -180) { diff += 360; }
+    var result = (a + diff * t) % 360;
+    if (result < 0) result += 360;
+    return result;
+  }
+
+  void _trackStability(double rawHeading) {
+    final prev = _lastRawHeading;
+    _lastRawHeading = rawHeading;
+    if (prev == null) return;
+
+    var diff = rawHeading - prev;
+    while (diff > 180)  { diff -= 360; }
+    while (diff < -180) { diff += 360; }
+
+    _recentDeltas.add(diff);
+    if (_recentDeltas.length > _deltaWindowSize) _recentDeltas.removeAt(0);
+
+    var reversals = 0;
+    for (var i = 1; i < _recentDeltas.length; i++) {
+      final a = _recentDeltas[i - 1];
+      final b = _recentDeltas[i];
+      if (a.abs() > _bigJumpDeg && b.abs() > _bigJumpDeg && (a > 0) != (b > 0)) {
+        reversals++;
+      }
+    }
+    _needsCalibration = reversals >= 2;
+  }
 
   @override
   void initState() {
     super.initState();
-    // On web there is no magnetometer — skip SmoothCompass entirely.
-    // On native, give the sensor 4 seconds to deliver a first reading.
+    // A free-running 60fps clock. We ignore its value and use each tick to
+    // nudge the displayed heading toward the sensor target — this decouples
+    // rendering from the (sporadic) sensor events so the needle GLIDES rather
+    // than stepping between frames.
+    _ticker = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+
     if (!kIsWeb) {
       _timeoutTimer = Timer(const Duration(seconds: 4), () {
         if (mounted && !_hasReceivedData) {
@@ -468,32 +617,68 @@ class _LiveQiblaCompassState extends State<_LiveQiblaCompass> {
   @override
   void dispose() {
     _timeoutTimer?.cancel();
+    _ticker.dispose();
     super.dispose();
+  }
+
+  // Called on every new raw sensor sample (~every 200ms) — starts a fresh
+  // interpolation segment FROM wherever the needle currently is TO the new
+  // reading, timed to finish exactly when the next sample is due.
+  void _onNewSample(double rawHeading) {
+    _segFrom    = _displayHeading;
+    _segTo      = rawHeading;
+    _segStartAt = DateTime.now();
+    _trackStability(rawHeading);
+  }
+
+  // Called every animation frame (~60fps) — advances the display along the
+  // current segment. Bounded lag: never more than one sample interval behind.
+  void _advance() {
+    final from = _segFrom;
+    final to   = _segTo;
+    final startAt = _segStartAt;
+    if (to == null) return;
+    if (from == null || startAt == null) {
+      _displayHeading = to;
+      return;
+    }
+    final elapsedMs = DateTime.now().difference(startAt).inMilliseconds;
+    final t = (elapsedMs / _sampleIntervalMs).clamp(0.0, 1.0);
+    _displayHeading = _lerpAngle(from, to, t);
+  }
+
+  double _alignmentDelta() {
+    var d = widget.qiblaAngle - _displayHeading;
+    while (d > 180)  { d -= 360; }
+    while (d < -180) { d += 360; }
+    return d;
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    // Web or timed-out simulator → static bearing card
+    // Web or timed-out simulator → static bearing card.
     if (kIsWeb || _sensorTimedOut) {
       return _StaticQiblaFallback(qiblaAngle: widget.qiblaAngle);
     }
 
     return SmoothCompass(
-      rotationSpeed:   200,
+      // Note: rotationSpeed only affects the package's own AnimatedRotation
+      // path (used when a `compassAsset` is supplied); we drive our own
+      // custom-painted needle via `compassBuilder` instead, so it's unused.
       isQiblahCompass: false,
       compassBuilder: (BuildContext ctx, AsyncSnapshot<CompassModel>? snapshot, Widget _) {
-        final heading = snapshot?.data?.angle;
+        final rawHeading = snapshot?.data?.angle;
 
-        // No sensor data yet — show calibrating spinner
-        if (heading == null) {
+        // No sensor data yet — show calibrating spinner.
+        if (rawHeading == null) {
           return SizedBox(
-            width: 220, height: 258,
+            width: 240, height: 300,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(
+                const MubtaathLoader(
                   color: AppColors.primary, strokeWidth: 2.5,
                 ),
                 const SizedBox(height: 14),
@@ -509,47 +694,123 @@ class _LiveQiblaCompassState extends State<_LiveQiblaCompass> {
           );
         }
 
-        // Sensor is working — cancel the timeout and mark data received
+        // Sensor is working — start a new interpolation segment toward this
+        // fresh reading, and cancel the timeout.
+        _onNewSample(rawHeading);
         if (!_hasReceivedData) {
           _hasReceivedData = true;
           _timeoutTimer?.cancel();
         }
 
-        final needleRad = (widget.qiblaAngle - heading) * (math.pi / 180);
+        // Repaint every frame from the ticker (independent of sensor events).
+        return AnimatedBuilder(
+          animation: _ticker,
+          builder: (context, _) {
+            _advance();
+            final aligned = _alignmentDelta().abs() <= _alignThresholdDeg;
+            if (aligned && !_wasAligned) {
+              HapticFeedback.mediumImpact();
+            }
+            _wasAligned = aligned;
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width:  220,
-              height: 220,
-              child: CustomPaint(
-                painter: _QiblaDialPainter(
-                  needleAngleRad: needleRad,
-                  primaryColor:   AppColors.primary,
-                  secondaryColor: AppColors.secondary,
-                  bgColor:        AppColors.background,
-                  borderColor:    AppColors.cardBorder,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
+            return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _ValuePill(
-                  label: l10n.directionLabel,
-                  value: '${heading.toStringAsFixed(1)}°',
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _needsCalibration
+                      ? Container(
+                          key: const ValueKey('calibration-banner'),
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          width: 240,
+                          decoration: BoxDecoration(
+                            color:        AppColors.warning.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(LucideIcons.infinity,
+                                      size: 18, color: AppColors.warning),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    l10n.compassNeedsCalibration,
+                                    style: const TextStyle(
+                                      fontFamily: 'Cairo', fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.warning,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                l10n.compassCalibrationHint,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: 'Tajawal', fontSize: 12,
+                                  color: AppColors.textSecondary, height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('no-banner')),
                 ),
-                const SizedBox(width: 12),
-                _ValuePill(
-                  label:         l10n.qiblaLabel,
-                  value:         '${widget.qiblaAngle.toStringAsFixed(1)}°',
-                  isHighlighted: true,
+                SizedBox(
+                  width:  240,
+                  height: 240,
+                  child: CustomPaint(
+                    painter: _QiblaDialPainter(
+                      heading:      _displayHeading,
+                      qiblaAngle:   widget.qiblaAngle,
+                      isAligned:    aligned,
+                      primaryColor: AppColors.primary,
+                      accentColor:  AppColors.secondary,
+                      bgColor:      AppColors.background,
+                      borderColor:  AppColors.cardBorder,
+                      alignedColor: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 20,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity:  aligned ? 1 : 0,
+                    child: Text(
+                      l10n.facingQibla,
+                      style: const TextStyle(
+                        fontFamily: 'Cairo', fontSize: 14,
+                        fontWeight: FontWeight.w800, color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ValuePill(
+                      label: l10n.directionLabel,
+                      value: '${_displayHeading.toStringAsFixed(0)}°',
+                    ),
+                    const SizedBox(width: 12),
+                    _ValuePill(
+                      label:         l10n.qiblaLabel,
+                      value:         '${widget.qiblaAngle.toStringAsFixed(0)}°',
+                      isHighlighted: true,
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -656,7 +917,7 @@ class _QiblaScreenContent extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(
+                  const MubtaathLoader(
                     color: AppColors.primary, strokeWidth: 2.5,
                   ),
                   const SizedBox(height: 16),
@@ -754,24 +1015,34 @@ class _QiblaScreenContent extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color:        AppColors.primary.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      width: 1.0,
-                    ),
+                    color:        AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color:      AppColors.primary.withValues(alpha: 0.06),
+                        blurRadius: 14,
+                        offset:     const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        l10n.howToUse,
-                        style: const TextStyle(
-                          fontFamily: 'Cairo', fontSize: 14,
-                          fontWeight: FontWeight.w700, color: AppColors.primary,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(LucideIcons.info,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n.howToUse,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo', fontSize: 14,
+                              fontWeight: FontWeight.w700, color: AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       Text(
                         l10n.qiblaInstructions,
                         style: const TextStyle(

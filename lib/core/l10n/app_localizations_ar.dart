@@ -215,6 +215,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get agreeToTerms => 'أوافق على الشروط والأحكام';
 
   @override
+  String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get legalPageLoadError => 'تعذر تحميل المحتوى، يرجى المحاولة مجدداً';
+
+  @override
   String get cancel => 'إلغاء';
 
   @override
@@ -449,6 +455,44 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nextPrayer => 'الصلاة القادمة';
 
   @override
+  String prayerTimeNow(String prayer) {
+    return 'حان الآن وقت صلاة $prayer';
+  }
+
+  @override
+  String elapsedSincePrayer(String prayer) {
+    return 'مضى على أذان $prayer';
+  }
+
+  @override
+  String get prayerNotifOn => 'تم تفعيل إشعارات مواقيت الصلاة';
+
+  @override
+  String get prayerNotifOff => 'تم إيقاف إشعارات مواقيت الصلاة';
+
+  @override
+  String get prayerNotifBlocked =>
+      'فعّل الإشعارات من إعدادات الجهاز للتذكير بالمواقيت';
+
+  @override
+  String get prayerNotifTooltip =>
+      'إشعارات مواقيت الصلاة (اضغط مطولاً للتجربة)';
+
+  @override
+  String get prayerNotifLocationError =>
+      'تعذر تحديد موقعك، حاول تحديث الصفحة قبل تفعيل الإشعارات';
+
+  @override
+  String get prayerNotifTestTitle => '🕌 مبتعث — مواقيت الصلاة';
+
+  @override
+  String get prayerNotifTestBody =>
+      'هذا إشعار تجريبي. جرّبه في الخلفية خلال ١٢ ثانية.';
+
+  @override
+  String get prayerNotifTestSent => 'تم إرسال إشعار تجريبي ✓';
+
+  @override
   String get timeRemaining => 'الوقت المتبقي';
 
   @override
@@ -486,7 +530,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compassInstruction =>
-      'وجّه هاتفك حتى يشير السهم الذهبي نحو الكعبة المشرفة';
+      'وجّه هاتفك حتى يشير المؤشر نحو الكعبة المشرفة';
 
   @override
   String get directionLabel => 'الاتجاه';
@@ -495,7 +539,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get qiblaLabel => 'القبلة';
 
   @override
+  String get facingQibla => 'أنت تواجه القبلة';
+
+  @override
   String get calibrating => 'جارٍ المعايرة...';
+
+  @override
+  String get compassNeedsCalibration => 'البوصلة غير مستقرة';
+
+  @override
+  String get compassCalibrationHint =>
+      'حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة';
 
   @override
   String degreeFromNorth(String degree) {
@@ -513,7 +567,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get qiblaInstructions =>
-      '• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• السهم الذهبي 🕋 يشير إلى اتجاه القبلة';
+      '• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• المؤشر يشير إلى اتجاه القبلة';
 
   @override
   String get staticCompassNote => 'اتجاه القبلة (حسابي)';
@@ -604,6 +658,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get fieldBio => 'النبذة';
+
+  @override
+  String get noBio => 'لا توجد نبذة';
 
   @override
   String get fieldFullName => 'الأسم الكامل';
@@ -860,6 +917,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String attendeesNow(int count) {
     return '$count يستمعون الآن';
   }
+
+  @override
+  String get noAttendeesYet => 'لا يوجد أحد هنا الآن';
 
   @override
   String get moderatorBadge => 'مشرف';

@@ -39,6 +39,14 @@ class AgoraError extends AgoraEvent {
 /// Periodic snapshot of who is actively talking, derived from Agora's
 /// `onAudioVolumeIndication`. Carries the Agora UIDs whose instantaneous
 /// volume crossed the speaking threshold. UID `0` represents the local user.
+/// A remote participant muted/unmuted their microphone. Drives the live
+/// mic-on/off badge in the grid without any backend round-trip.
+class AgoraMuteUpdate extends AgoraEvent {
+  final int uid;
+  final bool muted;
+  AgoraMuteUpdate(this.uid, this.muted);
+}
+
 class AgoraSpeakingUpdate extends AgoraEvent {
   final Set<int> speakingUids;
   AgoraSpeakingUpdate(this.speakingUids);
@@ -131,6 +139,11 @@ class AgoraService {
         onUserOffline: (connection, remoteUid, reason) {
           debugPrint('[AgoraService] onUserOffline — remoteUid=$remoteUid reason=$reason');
           _eventCtrl.add(AgoraUserOffline(remoteUid));
+        },
+        // Live mic on/off for remote users → updates the grid badge instantly.
+        onUserMuteAudio: (connection, remoteUid, muted) {
+          debugPrint('[AgoraService] onUserMuteAudio — uid=$remoteUid muted=$muted');
+          _eventCtrl.add(AgoraMuteUpdate(remoteUid, muted));
         },
         onLeaveChannel: (connection, stats) {
           debugPrint('[AgoraService] onLeaveChannel — txBytes=${stats.txBytes}');

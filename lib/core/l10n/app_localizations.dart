@@ -476,6 +476,18 @@ abstract class AppLocalizations {
   /// **'أوافق على الشروط والأحكام'**
   String get agreeToTerms;
 
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In ar, this message translates to:
+  /// **'سياسة الخصوصية'**
+  String get privacyPolicy;
+
+  /// No description provided for @legalPageLoadError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تحميل المحتوى، يرجى المحاولة مجدداً'**
+  String get legalPageLoadError;
+
   /// No description provided for @cancel.
   ///
   /// In ar, this message translates to:
@@ -926,6 +938,66 @@ abstract class AppLocalizations {
   /// **'الصلاة القادمة'**
   String get nextPrayer;
 
+  /// No description provided for @prayerTimeNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'حان الآن وقت صلاة {prayer}'**
+  String prayerTimeNow(String prayer);
+
+  /// No description provided for @elapsedSincePrayer.
+  ///
+  /// In ar, this message translates to:
+  /// **'مضى على أذان {prayer}'**
+  String elapsedSincePrayer(String prayer);
+
+  /// No description provided for @prayerNotifOn.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تفعيل إشعارات مواقيت الصلاة'**
+  String get prayerNotifOn;
+
+  /// No description provided for @prayerNotifOff.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إيقاف إشعارات مواقيت الصلاة'**
+  String get prayerNotifOff;
+
+  /// No description provided for @prayerNotifBlocked.
+  ///
+  /// In ar, this message translates to:
+  /// **'فعّل الإشعارات من إعدادات الجهاز للتذكير بالمواقيت'**
+  String get prayerNotifBlocked;
+
+  /// No description provided for @prayerNotifTooltip.
+  ///
+  /// In ar, this message translates to:
+  /// **'إشعارات مواقيت الصلاة (اضغط مطولاً للتجربة)'**
+  String get prayerNotifTooltip;
+
+  /// No description provided for @prayerNotifLocationError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تحديد موقعك، حاول تحديث الصفحة قبل تفعيل الإشعارات'**
+  String get prayerNotifLocationError;
+
+  /// No description provided for @prayerNotifTestTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'🕌 مبتعث — مواقيت الصلاة'**
+  String get prayerNotifTestTitle;
+
+  /// No description provided for @prayerNotifTestBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'هذا إشعار تجريبي. جرّبه في الخلفية خلال ١٢ ثانية.'**
+  String get prayerNotifTestBody;
+
+  /// No description provided for @prayerNotifTestSent.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال إشعار تجريبي ✓'**
+  String get prayerNotifTestSent;
+
   /// No description provided for @timeRemaining.
   ///
   /// In ar, this message translates to:
@@ -1001,7 +1073,7 @@ abstract class AppLocalizations {
   /// No description provided for @compassInstruction.
   ///
   /// In ar, this message translates to:
-  /// **'وجّه هاتفك حتى يشير السهم الذهبي نحو الكعبة المشرفة'**
+  /// **'وجّه هاتفك حتى يشير المؤشر نحو الكعبة المشرفة'**
   String get compassInstruction;
 
   /// No description provided for @directionLabel.
@@ -1016,11 +1088,29 @@ abstract class AppLocalizations {
   /// **'القبلة'**
   String get qiblaLabel;
 
+  /// No description provided for @facingQibla.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت تواجه القبلة'**
+  String get facingQibla;
+
   /// No description provided for @calibrating.
   ///
   /// In ar, this message translates to:
   /// **'جارٍ المعايرة...'**
   String get calibrating;
+
+  /// No description provided for @compassNeedsCalibration.
+  ///
+  /// In ar, this message translates to:
+  /// **'البوصلة غير مستقرة'**
+  String get compassNeedsCalibration;
+
+  /// No description provided for @compassCalibrationHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة'**
+  String get compassCalibrationHint;
 
   /// No description provided for @degreeFromNorth.
   ///
@@ -1049,7 +1139,7 @@ abstract class AppLocalizations {
   /// No description provided for @qiblaInstructions.
   ///
   /// In ar, this message translates to:
-  /// **'• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• السهم الذهبي 🕋 يشير إلى اتجاه القبلة'**
+  /// **'• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• المؤشر يشير إلى اتجاه القبلة'**
   String get qiblaInstructions;
 
   /// No description provided for @staticCompassNote.
@@ -1213,6 +1303,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'النبذة'**
   String get fieldBio;
+
+  /// No description provided for @noBio.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد نبذة'**
+  String get noBio;
 
   /// No description provided for @fieldFullName.
   ///
@@ -1699,6 +1795,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'{count} يستمعون الآن'**
   String attendeesNow(int count);
+
+  /// No description provided for @noAttendeesYet.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد أحد هنا الآن'**
+  String get noAttendeesYet;
 
   /// No description provided for @moderatorBadge.
   ///

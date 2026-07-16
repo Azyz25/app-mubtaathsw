@@ -108,6 +108,8 @@
   "termsAndConditions": "Terms and Conditions",
   "andPrivacyPolicy": " and Privacy Policy",
   "agreeToTerms": "I agree to the terms and conditions",
+  "privacyPolicy": "Privacy Policy",
+  "legalPageLoadError": "Couldn't load the content, please try again",
   "cancel": "Cancel",
   "confirm": "Confirm",
   "resetSentTitle": "Sent!",
@@ -205,6 +207,26 @@
   "maghrib": "Maghrib",
   "isha": "Isha",
   "nextPrayer": "Next prayer",
+  "prayerTimeNow": "It's now time for {prayer} prayer",
+  "@prayerTimeNow": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "elapsedSincePrayer": "Time since {prayer} adhan",
+  "@elapsedSincePrayer": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "prayerNotifOn": "Prayer-time notifications enabled",
+  "prayerNotifOff": "Prayer-time notifications turned off",
+  "prayerNotifBlocked": "Enable notifications in device settings to get prayer reminders",
+  "prayerNotifTooltip": "Prayer-time notifications (long-press to test)",
+  "prayerNotifLocationError": "Couldn't determine your location — try refreshing before enabling notifications",
+  "prayerNotifTestTitle": "🕌 Mubtaath — Prayer times",
+  "prayerNotifTestBody": "This is a test notification. Try it in the background within 12 seconds.",
+  "prayerNotifTestSent": "Test notification sent ✓",
   "timeRemaining": "Time remaining",
   "loadingLocation": "Getting location...",
   "locationError": "Could not get location",
@@ -218,10 +240,13 @@
   "qiblaTitle": "Qibla",
   "pointToKaaba": "Point the device toward the Qibla",
   "liveCompass": "Live Compass",
-  "compassInstruction": "Point your phone until the golden arrow points toward the Kaaba",
+  "compassInstruction": "Point your phone until the pointer points toward the Kaaba",
   "directionLabel": "Direction",
   "qiblaLabel": "Qibla",
+  "facingQibla": "You are facing the Qibla",
   "calibrating": "Calibrating...",
+  "compassNeedsCalibration": "Compass is unstable",
+  "compassCalibrationHint": "Move your phone in a figure-8 motion a few times to calibrate the compass",
   "degreeFromNorth": "{degree}° from north",
   "@degreeFromNorth": {
     "placeholders": {
@@ -231,7 +256,7 @@
   "locationPermissionMsg": "Please grant location permission in device settings",
   "openSettings": "Open Settings",
   "howToUse": "How to Use",
-  "qiblaInstructions": "• Hold your phone flat on a level surface\n• Stay away from metals and electronics\n• The golden arrow 🕋 points toward the Qibla",
+  "qiblaInstructions": "• Hold your phone flat on a level surface\n• Stay away from metals and electronics\n• The pointer points toward the Qibla",
   "staticCompassNote": "Qibla direction (calculated)",
   "prayersComplete": "Today's prayers complete",
 
@@ -281,6 +306,7 @@
   },
   "continueButton": "Continue",
   "fieldBio": "About",
+  "noBio": "No bio provided",
   "fieldFullName": "Full name",
   "fieldCountry": "Country",
   "changePassword": "Change password",
@@ -400,6 +426,7 @@
       "count": { "type": "int" }
     }
   },
+  "noAttendeesYet": "No one is here yet",
 
   "moderatorBadge": "Moderator",
   "ghostModeEnabled": "Ghost mode on — you are hidden from the room",

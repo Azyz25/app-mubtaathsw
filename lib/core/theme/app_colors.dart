@@ -88,6 +88,7 @@ abstract final class AppColors {
   // ─────────────────────────────────────────────
 
   static const Color success       = Color(0xFF2E7D52);
+  static const Color whatsapp      = Color(0xFF25D366); // WhatsApp brand green
   static const Color error         = Color(0xFFB00020); // snackbar / brand error
   static const Color inputError    = Color(0xFFD32F2F); // form field validation error
   static const Color logoutRed     = Color(0xFFD32F2F); // destructive action
@@ -123,14 +124,14 @@ abstract final class AppColors {
   /// Timestamp on other (light) bubble — muted grey
   static const Color chatTimeOther   = Color(0xFF8A8A8A);
 
-  /// Deleted-message bubble — neutral translucent dark
-  static const Color chatBubbleDeleted = Color(0x47000000); // black @ 28%
+  /// Deleted-message bubble — light neutral (chat sheet is white)
+  static const Color chatBubbleDeleted = Color(0x0F000000); // black @ 6%
 
   /// Deleted-message text — soft grey italic
-  static const Color chatTextDeleted = Color(0xFFCFCFCF);
+  static const Color chatTextDeleted = Color(0xFF9AA0A6);
 
-  /// Sender username label above bubbles — soft light grey, readable on dark scrim
-  static const Color chatSenderName  = Color(0xFFE3E3E3);
+  /// Sender username label above bubbles — mid grey, readable on the white sheet
+  static const Color chatSenderName  = Color(0xFF8A8A8A);
 
   // ── Chat input bar ──
   /// Input field surface — clean white pill (fixes white-on-white text bug)

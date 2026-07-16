@@ -290,31 +290,29 @@ class _BottomIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    // Bottom art takes up the bottom 38% of the screen — matches User_Flow
-    final artHeight = size.height * 0.38;
+    // The source asset has a large transparent margin above the actual
+    // skyline artwork (roughly its top half). BoxFit.cover + bottomCenter
+    // scales to fill this box by WIDTH and crops the overflow off the TOP —
+    // which is exactly that dead transparent space, not the artwork — so the
+    // landmarks render large and prominent instead of shrunk with empty
+    // padding around them (what BoxFit.contain was doing).
+    final artHeight = MediaQuery.of(context).size.height * 0.30;
 
     return Opacity(
       opacity: opacity.clamp(0.0, 1.0),
-      child: SizedBox(
-        width: screenWidth,
-        height: artHeight,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // City skyline image — bleeds edge to edge
-            Image.asset(
-              'assets/images/splash_bg.png',
-              width: screenWidth,
+      child: ClipRect(
+        child: SizedBox(
+          width:  screenWidth,
+          height: artHeight,
+          child: Image.asset(
+            'assets/images/splash_bg.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.bottomCenter,
+            errorBuilder: (_, __, ___) => _FallbackSkyline(
+              width:  screenWidth,
               height: artHeight,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              errorBuilder: (_, __, ___) => _FallbackSkyline(
-                width: screenWidth,
-                height: artHeight,
-              ),
             ),
-          ],
+          ),
         ),
       ),
     );

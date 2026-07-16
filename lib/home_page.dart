@@ -25,9 +25,12 @@
 //   Nav labels      → Cairo       9px
 // =============================================================================
 
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -37,6 +40,7 @@ import 'package:mubtaath/student_guide_page.dart' hide AppSearchBar;
 import 'package:mubtaath/notifications_page.dart';
 import 'package:mubtaath/community_page.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
@@ -483,8 +487,14 @@ class _HomeBody extends StatelessWidget {
 
         return SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
+            child: MubtaathRefresh(
+              onRefresh: () => cubit.reload(),
+              child: CustomScrollView(
+              // AlwaysScrollable so the pull-to-refresh works even when the
+              // content is shorter than the viewport.
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               slivers: [
                 // ── Header ────────────────────────────────────────────────
                 SliverToBoxAdapter(
@@ -562,6 +572,7 @@ class _HomeBody extends StatelessWidget {
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
+          ),
           );
       },
     );
@@ -588,47 +599,51 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n          = AppLocalizations.of(context)!;
-    final activeColor   = isDark ? Colors.white : AppColors.primary;
-    final inactiveColor = isDark
-        ? Colors.white.withOpacity(0.40)
+    final l10n = AppLocalizations.of(context)!;
+
+    // Solid selection "bubble": a filled chip behind the active icon.
+    //   • Android (light bar): green bubble, white icon.
+    //   • iOS   (dark glass):  white bubble, dark icon.
+    final bubbleColor     = isDark ? AppColors.white       : AppColors.primary;
+    final activeIconColor = isDark ? AppColors.primaryDark : AppColors.white;
+    final inactiveColor   = isDark
+        ? AppColors.white.withValues(alpha: 0.58)
         : AppColors.navInactive;
-    final pillBg = isDark
-        ? Colors.white.withOpacity(0.15)
-        : AppColors.primary.withOpacity(0.10);
+    final activeLabel     = isDark ? AppColors.white : AppColors.primary;
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon — fixed size pill with optional unread badge
+          // Icon — solid rounded bubble when active, with optional unread badge.
           Stack(
             clipBehavior: Clip.none,
             children: [
               AnimatedContainer(
-                duration:  const Duration(milliseconds: 220),
-                curve:     Curves.easeOutCubic,
-                width:     isActive ? 44 : 32,
-                height:    30,
+                duration:  const Duration(milliseconds: 260),
+                curve:     Curves.easeOutBack,
+                width:     isActive ? 52 : 42,
+                height:    38,
                 decoration: BoxDecoration(
-                  color: isActive ? pillBg : Colors.transparent,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: isActive && !isDark
+                  color:        isActive ? bubbleColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isActive
                       ? [
                           BoxShadow(
-                            color:      AppColors.primary.withOpacity(0.08),
-                            blurRadius: 10,
-                            offset:     const Offset(0, 4),
+                            color:      bubbleColor.withValues(alpha: 0.34),
+                            blurRadius: 13,
+                            offset:     const Offset(0, 5),
                           ),
                         ]
                       : null,
                 ),
                 child: Icon(
                   item.icon,
-                  size:  20,
-                  color: isActive ? activeColor : inactiveColor,
+                  size:  22,
+                  color: isActive ? activeIconColor : inactiveColor,
                 ),
               ),
               if (badge > 0)
@@ -659,16 +674,16 @@ class _NavTab extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 3),
+          const SizedBox(height: 5),
 
-          // Label — 10px, ellipsis, centered; works for both RTL and LTR text
+          // Label — ellipsis, centered; works for both RTL and LTR text.
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 180),
             style: TextStyle(
               fontFamily: 'Cairo',
-              fontSize:   10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-              color:      isActive ? activeColor : inactiveColor,
+              fontSize:   11,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+              color:      isActive ? activeLabel : inactiveColor,
               height:     1.0,
             ),
             child: Text(
@@ -704,21 +719,21 @@ class _AndroidNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color:        AppColors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         boxShadow: [
           BoxShadow(
-            color:      AppColors.primary.withOpacity(0.08),
-            blurRadius: 15,
+            color:      AppColors.primary.withValues(alpha: 0.10),
+            blurRadius: 18,
             offset:     const Offset(0, -4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: 64,
+            height: 76,
             child: Row(
               children: List.generate(
                 _kNavItems.length,
@@ -754,32 +769,42 @@ class _IOSNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final bot = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, bot + 12),
+      padding: EdgeInsets.fromLTRB(18, 0, 18, bot + 12),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Container(
-          height: 68,
-          decoration: BoxDecoration(
-            color:        AppColors.primaryDark.withOpacity(0.91),
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color:      AppColors.primary.withOpacity(0.30),
-                blurRadius: 24,
-                offset:     const Offset(0, 10),
+        borderRadius: BorderRadius.circular(30),
+        // iOS-26 "Liquid Glass" approximation: a real backdrop blur behind a
+        // translucent fill, with a bright edge highlight. Renders as frosted
+        // glass over whatever content scrolls beneath it.
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: Container(
+            height: 78,
+            decoration: BoxDecoration(
+              color:        AppColors.primaryDark.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: AppColors.white.withValues(alpha: 0.18),
+                width: 1,
               ),
-            ],
-          ),
-          child: Row(
-            children: List.generate(
-              _kNavItems.length,
-              (i) => Expanded(
-                child: _NavTab(
-                  item:     _kNavItems[i],
-                  isActive: currentIndex == i,
-                  onTap:    () => onTap(i),
-                  badge:    i == 1 ? unreadNotifCount : 0,
-                  isDark:   true,
+              boxShadow: [
+                BoxShadow(
+                  color:      AppColors.primary.withValues(alpha: 0.28),
+                  blurRadius: 26,
+                  offset:     const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(
+                _kNavItems.length,
+                (i) => Expanded(
+                  child: _NavTab(
+                    item:     _kNavItems[i],
+                    isActive: currentIndex == i,
+                    onTap:    () => onTap(i),
+                    badge:    i == 1 ? unreadNotifCount : 0,
+                    isDark:   true,
+                  ),
                 ),
               ),
             ),
@@ -864,7 +889,18 @@ class HomePage extends StatelessWidget {
           return BlocSelector<NotifCubit, NotifState, int>(
             selector: (s) => s.unreadCount,
             builder: (ctx2, unreadNotifCount) {
-              return Scaffold(
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                // Light Android system nav bar to match the app background on
+                // every main tab (home / notifications / community / settings /
+                // prayer / guide). Re-applied every frame so it always wins.
+                value: const SystemUiOverlayStyle(
+                  systemNavigationBarColor:          AppColors.background,
+                  systemNavigationBarIconBrightness: Brightness.dark,
+                  systemNavigationBarDividerColor:   AppColors.background,
+                  statusBarColor:                    Colors.transparent,
+                  statusBarIconBrightness:           Brightness.dark,
+                ),
+                child: Scaffold(
                 backgroundColor: AppColors.background,
                 // Android nav bar
                 bottomNavigationBar: _isIOS
@@ -902,6 +938,7 @@ class HomePage extends StatelessWidget {
                       ),
                   ],
                 ),
+              ),
               );
             },
           );

@@ -17,6 +17,7 @@ class UserProfileCubit extends Cubit<UserProfileState> {
         name:          data['full_name']      as String?,
         username:      data['username']       as String?,
         avatarUrl:     data['avatar_url']     as String?,
+        bio:           data['bio']            as String?,
         countryNameAr: data['country_name_ar'] as String?,
         countryNameEn: data['country_name_en'] as String?,
         countryFlag:   data['country_flag']   as String?,

@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Secrets — never commit. Signing keys, App Store Connect API keys, and
+# Firebase configs must be supplied to Codemagic via its own secure
+# environment/integration settings, not via the repo.
+# NOTE: excluding google-services.json means the android-apk Codemagic
+# workflow in codemagic.yaml will fail (the Gradle plugin requires the file
+# to exist) until it's supplied another way — see the summary for options.
+google-services.json
+GoogleService-Info.plist
+*.p8
+*.p12
+*.jks
+*.keystore
+key.properties
+.env
+.env.*
+*.pem

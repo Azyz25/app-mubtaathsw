@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/theme.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 
 // ─────────────────────────────────────────────────────────────
 // GOOGLE SIGN-IN BUTTON
@@ -42,7 +43,7 @@ class GoogleSignInButton extends StatelessWidget {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: MubtaathLoader(strokeWidth: 2.5),
               )
             : Stack(
                 alignment: Alignment.center,

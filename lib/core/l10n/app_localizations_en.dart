@@ -215,6 +215,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agreeToTerms => 'I agree to the terms and conditions';
 
   @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get legalPageLoadError =>
+      'Couldn\'t load the content, please try again';
+
+  @override
   String get cancel => 'Cancel';
 
   @override
@@ -451,6 +458,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nextPrayer => 'Next prayer';
 
   @override
+  String prayerTimeNow(String prayer) {
+    return 'It\'s now time for $prayer prayer';
+  }
+
+  @override
+  String elapsedSincePrayer(String prayer) {
+    return 'Time since $prayer adhan';
+  }
+
+  @override
+  String get prayerNotifOn => 'Prayer-time notifications enabled';
+
+  @override
+  String get prayerNotifOff => 'Prayer-time notifications turned off';
+
+  @override
+  String get prayerNotifBlocked =>
+      'Enable notifications in device settings to get prayer reminders';
+
+  @override
+  String get prayerNotifTooltip =>
+      'Prayer-time notifications (long-press to test)';
+
+  @override
+  String get prayerNotifLocationError =>
+      'Couldn\'t determine your location — try refreshing before enabling notifications';
+
+  @override
+  String get prayerNotifTestTitle => '🕌 Mubtaath — Prayer times';
+
+  @override
+  String get prayerNotifTestBody =>
+      'This is a test notification. Try it in the background within 12 seconds.';
+
+  @override
+  String get prayerNotifTestSent => 'Test notification sent ✓';
+
+  @override
   String get timeRemaining => 'Time remaining';
 
   @override
@@ -488,7 +533,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compassInstruction =>
-      'Point your phone until the golden arrow points toward the Kaaba';
+      'Point your phone until the pointer points toward the Kaaba';
 
   @override
   String get directionLabel => 'Direction';
@@ -497,7 +542,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qiblaLabel => 'Qibla';
 
   @override
+  String get facingQibla => 'You are facing the Qibla';
+
+  @override
   String get calibrating => 'Calibrating...';
+
+  @override
+  String get compassNeedsCalibration => 'Compass is unstable';
+
+  @override
+  String get compassCalibrationHint =>
+      'Move your phone in a figure-8 motion a few times to calibrate the compass';
 
   @override
   String degreeFromNorth(String degree) {
@@ -516,7 +571,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qiblaInstructions =>
-      '• Hold your phone flat on a level surface\n• Stay away from metals and electronics\n• The golden arrow 🕋 points toward the Qibla';
+      '• Hold your phone flat on a level surface\n• Stay away from metals and electronics\n• The pointer points toward the Qibla';
 
   @override
   String get staticCompassNote => 'Qibla direction (calculated)';
@@ -608,6 +663,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fieldBio => 'About';
+
+  @override
+  String get noBio => 'No bio provided';
 
   @override
   String get fieldFullName => 'Full name';
@@ -868,6 +926,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String attendeesNow(int count) {
     return '$count listening now';
   }
+
+  @override
+  String get noAttendeesYet => 'No one is here yet';
 
   @override
   String get moderatorBadge => 'Moderator';

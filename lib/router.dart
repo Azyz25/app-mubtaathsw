@@ -20,6 +20,7 @@ import 'package:mubtaath/qibla_screen.dart';
 import 'package:mubtaath/features/audio_room/presentation/cubit/audio_room_cubit.dart';
 import 'package:mubtaath/features/audio_room/presentation/pages/audio_room_page.dart';
 import 'package:mubtaath/features/reports/presentation/pages/support_page.dart';
+import 'package:mubtaath/features/legal/presentation/pages/legal_page_screen.dart';
 import 'package:mubtaath/account_suspended_page.dart';
 
 // Mubtaath premium transition:
@@ -97,8 +98,12 @@ final GoRouter appRouter = GoRouter(
     final isLoggedIn  = authNotifier.value;
     final isSuspended = suspendedNotifier.value;
 
-    // Always send suspended users to the suspended screen.
-    if (isSuspended && loc != '/suspended') return '/suspended';
+    // Suspended users are confined to the suspended screen and the support
+    // page (so they can appeal) — every other route bounces back. This makes
+    // home unreachable even if a stray back-navigation targets it.
+    if (isSuspended && loc != '/suspended' && loc != '/support') {
+      return '/suspended';
+    }
 
     final isProtected =
         _protectedRoutes.contains(loc) || loc.startsWith('/room/');
@@ -221,6 +226,27 @@ final GoRouter appRouter = GoRouter(
       name: 'support',
       pageBuilder: (context, state) =>
           _mubtaathPage(state.pageKey, const SupportPage()),
+    ),
+
+    // Terms of Service / Privacy Policy — dashboard-editable content.
+    // Deliberately NOT in _protectedRoutes: reachable pre-auth from the
+    // registration checkbox as well as post-auth from Settings.
+    GoRoute(
+      path: '/legal/:slug',
+      name: 'legal',
+      pageBuilder: (context, state) {
+        final slug = state.pathParameters['slug'] ?? 'terms';
+        final l10n = AppLocalizations.of(context)!;
+        final fallbackTitle = switch (slug) {
+          'privacy' => l10n.privacyPolicy,
+          'about' => l10n.aboutApp,
+          _ => l10n.termsAndConditions,
+        };
+        return _mubtaathPage(
+          state.pageKey,
+          LegalPageScreen(slug: slug, fallbackTitle: fallbackTitle),
+        );
+      },
     ),
 
     // Settings — not in the target list, keep default transition.

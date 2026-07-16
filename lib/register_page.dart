@@ -639,10 +639,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         enabled: !isLoading,
                         onChanged: (val) =>
                             setState(() => _acceptedTerms = val ?? false),
-                        onTermsTap: () {
-                          // TODO: Navigate to terms screen or show bottom sheet
-                          // context.push('/terms');
-                        },
+                        onTermsTap: () => context.push('/legal/terms'),
+                        onPrivacyTap: () => context.push('/legal/privacy'),
                       ),
 
                       const SizedBox(height: 28),
@@ -742,12 +740,14 @@ class _TermsCheckbox extends StatelessWidget {
   final bool enabled;
   final ValueChanged<bool?> onChanged;
   final VoidCallback onTermsTap;
+  final VoidCallback onPrivacyTap;
 
   const _TermsCheckbox({
     required this.value,
     required this.enabled,
     required this.onChanged,
     required this.onTermsTap,
+    required this.onPrivacyTap,
   });
 
   @override
@@ -785,7 +785,18 @@ class _TermsCheckbox extends StatelessWidget {
                     recognizer: TapGestureRecognizer()
                       ..onTap = enabled ? onTermsTap : null,
                   ),
-                  TextSpan(text: l10n.andPrivacyPolicy),
+                  TextSpan(
+                    text: l10n.andPrivacyPolicy,
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      decoration: TextDecoration.none,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = enabled ? onPrivacyTap : null,
+                  ),
                 ],
               ),
             ),
@@ -842,15 +853,4 @@ const _kPickerCountries = <_CountryEntry>[
   _CountryEntry('أستراليا',  'Australia',      'AU', '🇦🇺'),
   _CountryEntry('أمريكا',    'United States',  'US', '🇺🇸'),
   _CountryEntry('كندا',      'Canada',         'CA', '🇨🇦'),
-  _CountryEntry('ألمانيا',   'Germany',        'DE', '🇩🇪'),
-  _CountryEntry('فرنسا',     'France',         'FR', '🇫🇷'),
-  _CountryEntry('هولندا',    'Netherlands',    'NL', '🇳🇱'),
-  _CountryEntry('السويد',    'Sweden',         'SE', '🇸🇪'),
-  _CountryEntry('النرويج',   'Norway',         'NO', '🇳🇴'),
-  _CountryEntry('اليابان',   'Japan',          'JP', '🇯🇵'),
-  _CountryEntry('كوريا',     'South Korea',    'KR', '🇰🇷'),
-  _CountryEntry('تركيا',     'Turkey',         'TR', '🇹🇷'),
-  _CountryEntry('الإمارات',  'UAE',            'AE', '🇦🇪'),
-  _CountryEntry('السعودية',  'Saudi Arabia',   'SA', '🇸🇦'),
-  _CountryEntry('ماليزيا',   'Malaysia',       'MY', '🇲🇾'),
 ];

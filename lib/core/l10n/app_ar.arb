@@ -108,6 +108,8 @@
   "termsAndConditions": "الشروط والأحكام",
   "andPrivacyPolicy": " وسياسة الخصوصية",
   "agreeToTerms": "أوافق على الشروط والأحكام",
+  "privacyPolicy": "سياسة الخصوصية",
+  "legalPageLoadError": "تعذر تحميل المحتوى، يرجى المحاولة مجدداً",
   "cancel": "إلغاء",
   "confirm": "تأكيد",
   "resetSentTitle": "تم الإرسال!",
@@ -205,6 +207,26 @@
   "maghrib": "المغرب",
   "isha": "العشاء",
   "nextPrayer": "الصلاة القادمة",
+  "prayerTimeNow": "حان الآن وقت صلاة {prayer}",
+  "@prayerTimeNow": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "elapsedSincePrayer": "مضى على أذان {prayer}",
+  "@elapsedSincePrayer": {
+    "placeholders": {
+      "prayer": { "type": "String" }
+    }
+  },
+  "prayerNotifOn": "تم تفعيل إشعارات مواقيت الصلاة",
+  "prayerNotifOff": "تم إيقاف إشعارات مواقيت الصلاة",
+  "prayerNotifBlocked": "فعّل الإشعارات من إعدادات الجهاز للتذكير بالمواقيت",
+  "prayerNotifTooltip": "إشعارات مواقيت الصلاة (اضغط مطولاً للتجربة)",
+  "prayerNotifLocationError": "تعذر تحديد موقعك، حاول تحديث الصفحة قبل تفعيل الإشعارات",
+  "prayerNotifTestTitle": "🕌 مبتعث — مواقيت الصلاة",
+  "prayerNotifTestBody": "هذا إشعار تجريبي. جرّبه في الخلفية خلال ١٢ ثانية.",
+  "prayerNotifTestSent": "تم إرسال إشعار تجريبي ✓",
   "timeRemaining": "الوقت المتبقي",
   "loadingLocation": "جارٍ تحديد الموقع...",
   "locationError": "تعذّر تحديد الموقع",
@@ -218,10 +240,13 @@
   "qiblaTitle": "القبلة",
   "pointToKaaba": "وجّه الجهاز نحو القبلة",
   "liveCompass": "البوصلة الحية",
-  "compassInstruction": "وجّه هاتفك حتى يشير السهم الذهبي نحو الكعبة المشرفة",
+  "compassInstruction": "وجّه هاتفك حتى يشير المؤشر نحو الكعبة المشرفة",
   "directionLabel": "الاتجاه",
   "qiblaLabel": "القبلة",
+  "facingQibla": "أنت تواجه القبلة",
   "calibrating": "جارٍ المعايرة...",
+  "compassNeedsCalibration": "البوصلة غير مستقرة",
+  "compassCalibrationHint": "حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة",
   "degreeFromNorth": "{degree}° من الشمال",
   "@degreeFromNorth": {
     "placeholders": {
@@ -231,7 +256,7 @@
   "locationPermissionMsg": "يرجى منح إذن الموقع من إعدادات الجهاز",
   "openSettings": "فتح الإعدادات",
   "howToUse": "كيفية الاستخدام",
-  "qiblaInstructions": "• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• السهم الذهبي 🕋 يشير إلى اتجاه القبلة",
+  "qiblaInstructions": "• أمسك هاتفك أفقياً على سطح مستوٍ\n• ابتعد عن المعادن والإلكترونيات\n• المؤشر يشير إلى اتجاه القبلة",
   "staticCompassNote": "اتجاه القبلة (حسابي)",
   "prayersComplete": "أُكمِلت صلوات اليوم",
 
@@ -281,6 +306,7 @@
   },
   "continueButton": "متابعة",
   "fieldBio": "النبذة",
+  "noBio": "لا توجد نبذة",
   "fieldFullName": "الأسم الكامل",
   "fieldCountry": "الدولة",
   "changePassword": "تغيير كلمة المرور",
@@ -400,6 +426,7 @@
       "count": { "type": "int" }
     }
   },
+  "noAttendeesYet": "لا يوجد أحد هنا الآن",
 
   "moderatorBadge": "مشرف",
   "ghostModeEnabled": "وضع التخفي مفعّل — أنت غير مرئي في الغرفة",

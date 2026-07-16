@@ -8,7 +8,7 @@
 //   ✅ Every field card wrapped in SizedBox(width: double.infinity)
 //   ✅ Every TextFormField/TextField has width via parent SizedBox.expand
 //   ✅ Save button correctly wired to cubit.updateProfile()
-//   ✅ Save button shows CircularProgressIndicator while status == saving
+//   ✅ Save button shows MubtaathLoader while status == saving
 //   ✅ Save button disabled/grey when no unsaved changes
 //   ✅ All labels: Cairo | All body/hints: Tajawal
 //   ✅ All icons RTL-aligned (leading RIGHT, trailing LEFT)
@@ -36,6 +36,7 @@ class UserModel {
   final String fullName;
   final String username;
   final String bio;
+  final String countryCode;
   final String countryNameAr;
   final String countryNameEn;
   final String countryFlag;
@@ -47,6 +48,7 @@ class UserModel {
     required this.fullName,
     required this.username,
     required this.bio,
+    this.countryCode = '',
     required this.countryNameAr,
     required this.countryNameEn,
     this.countryFlag = '🌍',
@@ -60,6 +62,7 @@ class UserModel {
   UserModel copyWith({
     String? fullName,
     String? bio,
+    String? countryCode,
     String? countryNameAr,
     String? countryNameEn,
     String? countryFlag,
@@ -70,6 +73,7 @@ class UserModel {
         fullName:      fullName      ?? this.fullName,
         username:      username,
         bio:           bio           ?? this.bio,
+        countryCode:   countryCode   ?? this.countryCode,
         countryNameAr: countryNameAr ?? this.countryNameAr,
         countryNameEn: countryNameEn ?? this.countryNameEn,
         countryFlag:   countryFlag   ?? this.countryFlag,
@@ -85,6 +89,7 @@ class UserModel {
         fullName:      json['fullName']      as String? ?? '',
         username:      json['username']      as String? ?? '',
         bio:           json['bio']           as String? ?? '',
+        countryCode:   json['countryCode']   as String? ?? '',
         countryNameAr: json['countryNameAr'] as String? ?? '',
         countryNameEn: json['countryNameEn'] as String? ?? '',
         countryFlag:   json['countryFlag']   as String? ?? '🌍',
@@ -172,11 +177,16 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(state.copyWith(user: user.copyWith(bio: v), hasChanges: true, status: ProfileStatus.idle));
   }
 
-  void selectCountry(String nameAr, String nameEn, String flag) {
+  void selectCountry(String code, String nameAr, String nameEn, String flag) {
     final user = state.user;
     if (user == null) return;
     emit(state.copyWith(
-      user:       user.copyWith(countryNameAr: nameAr, countryNameEn: nameEn, countryFlag: flag),
+      user: user.copyWith(
+        countryCode:   code,
+        countryNameAr: nameAr,
+        countryNameEn: nameEn,
+        countryFlag:   flag,
+      ),
       hasChanges: true,
       status:     ProfileStatus.idle,
     ));
@@ -190,8 +200,12 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(state.copyWith(status: ProfileStatus.saving));
     try {
       final resp = await appDio.patch('/users/${user.id}', data: {
-        'full_name': user.fullName,
-        'bio':       user.bio,
+        'full_name':       user.fullName,
+        'bio':             user.bio,
+        if (user.countryCode.isNotEmpty) 'country_code':    user.countryCode,
+        if (user.countryNameAr.isNotEmpty) 'country_name_ar': user.countryNameAr,
+        if (user.countryNameEn.isNotEmpty) 'country_name_en': user.countryNameEn,
+        if (user.countryFlag.isNotEmpty) 'country_flag':    user.countryFlag,
       });
       final updated = UserModel.fromJson(resp.data['data'] as Map<String, dynamic>);
       emit(state.copyWith(user: updated, status: ProfileStatus.saved, hasChanges: false));
@@ -439,12 +453,12 @@ class _SaveButton extends StatelessWidget {
   Widget _buttonContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    // ── Loading: white CircularProgressIndicator ──────────────────────
+    // ── Loading: white MubtaathLoader ──────────────────────────────────
     if (state.isSaving) {
       return const SizedBox(
         key:    ValueKey('loading'),
         width:  24, height: 24,
-        child:  CircularProgressIndicator(
+        child:  MubtaathLoader(
           color:       Colors.white,
           strokeWidth: 2.5,
         ),
@@ -587,14 +601,14 @@ class _CountryOption extends StatelessWidget {
 
 void _showCountryPicker(BuildContext ctx, ProfileCubit cubit) {
   const countries = [
-    ('بريطانيا', 'United Kingdom', '🇬🇧'),
-    ('أستراليا', 'Australia',      '🇦🇺'),
-    ('أمريكا',   'United States',  '🇺🇸'),
-    ('كندا',     'Canada',         '🇨🇦'),
+    ('GB', 'بريطانيا', 'United Kingdom', '🇬🇧'),
+    ('AU', 'أستراليا', 'Australia',      '🇦🇺'),
+    ('US', 'أمريكا',   'United States',  '🇺🇸'),
+    ('CA', 'كندا',     'Canada',         '🇨🇦'),
   ];
 
-  final l10n             = AppLocalizations.of(ctx)!;
-  final currentCountryEn = cubit.state.user?.countryNameEn ?? '';
+  final l10n          = AppLocalizations.of(ctx)!;
+  final currentCountryCode = cubit.state.user?.countryCode ?? '';
 
   showModalBottomSheet(
     context:            ctx,
@@ -637,14 +651,14 @@ void _showCountryPicker(BuildContext ctx, ProfileCubit cubit) {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final c          = countries[index];
-                final isSelected = c.$2 == currentCountryEn;
+                final isSelected = c.$1 == currentCountryCode;
                 return _CountryOption(
-                  nameAr:     c.$1,
-                  nameEn:     c.$2,
-                  flag:       c.$3,
+                  nameAr:     c.$2,
+                  nameEn:     c.$3,
+                  flag:       c.$4,
                   isSelected: isSelected,
                   onTap: () {
-                    cubit.selectCountry(c.$1, c.$2, c.$3);
+                    cubit.selectCountry(c.$1, c.$2, c.$3, c.$4);
                     Navigator.of(context).pop();
                   },
                 );
@@ -859,7 +873,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               child: _saving
                   ? const SizedBox(
                       width:  24, height: 24,
-                      child:  CircularProgressIndicator(
+                      child:  MubtaathLoader(
                         color:       Colors.white,
                         strokeWidth: 2.5,
                       ),

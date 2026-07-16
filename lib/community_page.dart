@@ -24,6 +24,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
@@ -189,6 +190,9 @@ class CommunityCubit extends Cubit<CommunityState> {
         )) {
     _load();
   }
+
+  /// Public entry point for pull-to-refresh.
+  Future<void> reload() => _load();
 
   Future<void> _load() async {
     emit(state.copyWith(isLoading: true, hasError: false));
@@ -411,8 +415,12 @@ class _CommunityView extends StatelessWidget {
 
         return SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+          child: MubtaathRefresh(
+            onRefresh: () => cubit.reload(),
+            child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             slivers: [
 
               // ── 1. Header ────────────────────────────────────────────────
@@ -537,6 +545,7 @@ const SliverToBoxAdapter(child: SizedBox(height: 24)),
               // Bottom padding so last card clears the nav bar
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
+          ),
           ),
         );
       },

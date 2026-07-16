@@ -14,9 +14,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/reports/presentation/cubit/report_cubit.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,14 +143,29 @@ class _SupportViewState extends State<_SupportView>
       },
       builder: (context, state) {
         final isSending = state.status == ReportStatus.sending;
+        // When the user is suspended, support is reached FROM the suspended
+        // screen — never let "back" leak them into the app. Route it back to
+        // /suspended instead, and block the system/gesture back the same way.
+        final isSuspended = suspendedNotifier.value;
 
-        return Scaffold(
+        return PopScope(
+          canPop: !isSuspended,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && isSuspended) context.go('/suspended');
+          },
+          child: Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
             backgroundColor:        AppColors.background,
             elevation:              0,
             scrolledUnderElevation: 0,
-            leading: BackButton(color: AppColors.darkText),
+            leading: isSuspended
+                ? IconButton(
+                    icon: const Icon(LucideIcons.arrowRight,
+                        color: AppColors.darkText),
+                    onPressed: () => context.go('/suspended'),
+                  )
+                : BackButton(color: AppColors.darkText),
             title: Text(
               l10n.helpAndSupport,
               style: const TextStyle(
@@ -185,6 +203,7 @@ class _SupportViewState extends State<_SupportView>
               _buildHistoryTab(context, state, l10n),
             ],
           ),
+        ),
         );
       },
     );
@@ -332,7 +351,7 @@ class _SupportViewState extends State<_SupportView>
                     ? const SizedBox(
                         width:  22,
                         height: 22,
-                        child: CircularProgressIndicator(
+                        child: MubtaathLoader(
                           color:       AppColors.white,
                           strokeWidth: 2.5,
                         ),
@@ -366,7 +385,7 @@ class _SupportViewState extends State<_SupportView>
       case HistoryStatus.loading:
       case HistoryStatus.initial:
         return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: MubtaathLoader(color: AppColors.primary),
         );
 
       case HistoryStatus.failure:

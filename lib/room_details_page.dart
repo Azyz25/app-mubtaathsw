@@ -28,13 +28,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/config/reverb_config.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/services/floating_messages_setting.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/utils/avatar_utils.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/reports/presentation/widgets/report_sheet.dart';
 import 'package:mubtaath/features/reports/presentation/widgets/user_profile_sheet.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -60,6 +63,77 @@ Widget _roomAvatarImage(
     return Image.asset(path, fit: fit, errorBuilder: (_, __, ___) => fallback);
   }
   return Image.network(path, fit: fit, errorBuilder: (_, __, ___) => fallback);
+}
+
+/// First two letters for an avatar fallback: two initials from a two-word name,
+/// otherwise the first two characters of a single word. Used for admins (who
+/// have no photo) and any user whose avatar fails to load.
+String avatarInitials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+  if (parts.isEmpty) return '؟';
+  if (parts.length == 1) {
+    final w = parts.first.characters;
+    return w.take(2).toString();
+  }
+  return parts[0].characters.first + parts[1].characters.first;
+}
+
+/// Circular initials chip shown when a participant has no (loadable) photo.
+Widget _initialsAvatar(
+  String name, {
+  required double diameter,
+  required double fontSize,
+  Color bg = const Color(0x1A305544), // primary @ 10%
+  Color fg = AppColors.primary,
+}) {
+  return Container(
+    width: diameter,
+    height: diameter,
+    alignment: Alignment.center,
+    color: bg,
+    child: Text(
+      avatarInitials(name),
+      style: TextStyle(
+        fontFamily: 'Cairo',
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
+        color: fg,
+      ),
+    ),
+  );
+}
+
+/// Avatar image that falls back to initials on an empty path or a load error
+/// (remote URL or bundled asset), so admins and photo-less users still read as
+/// a named circle instead of a generic glyph.
+Widget _avatarWithInitials(
+  String path,
+  String name, {
+  required double diameter,
+  required double fontSize,
+  Color bg = const Color(0x1A305544),
+  Color fg = AppColors.primary,
+}) {
+  final fallback = _initialsAvatar(
+    name,
+    diameter: diameter,
+    fontSize: fontSize,
+    bg: bg,
+    fg: fg,
+  );
+  if (path.isEmpty) return fallback;
+  if (path.startsWith('assets/')) {
+    return Image.asset(path,
+        width: diameter,
+        height: diameter,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback);
+  }
+  return Image.network(path,
+      width: diameter,
+      height: diameter,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback);
 }
 
 // =============================================================================
@@ -313,6 +387,12 @@ final class GlobalBanEvent extends ModerationEvent {
   const GlobalBanEvent({this.reason = ''});
 }
 
+/// The whole room was closed by an admin — every client is evicted, not just
+/// one moderated user.
+final class RoomClosedEvent extends ModerationEvent {
+  const RoomClosedEvent();
+}
+
 // =============================================================================
 // SECTION 2 — STATE
 // =============================================================================
@@ -495,6 +575,10 @@ class RoomCubit extends Cubit<RoomState> {
   // so pusher:subscription_succeeded knows to re-announce presence.
   bool _wasLiveOnDisconnect = false;
 
+  // Short mute/unmute confirmation tones — fire-and-forget, never blocks
+  // the actual mic toggle if playback fails.
+  final AudioPlayer _sfxPlayer = AudioPlayer();
+
   // Current-user identity — fetched from GET /auth/me during _init().
   // Drives own-message alignment, self-detection in profile sheets, and the
   // moderator-only ghost-mode toggle.
@@ -510,6 +594,9 @@ class RoomCubit extends Cubit<RoomState> {
   }
 
   Future<void> _init() async {
+    // Floating-messages preference now lives in app Settings, not the chat sheet.
+    final floating = await FloatingMessagesSetting.get();
+    if (!isClosed) emit(state.copyWith(floatingEnabled: floating));
     await _readCurrentUser();
     await _loadRoom();
     await _loadMessages(); // history first — WS appends only newer events
@@ -730,7 +817,10 @@ class RoomCubit extends Cubit<RoomState> {
         if (payload['channel'] != 'private-rooms.$_roomId' || isClosed) return;
         final data = _decodeData(payload['data']);
         final targetId = data['userId']?.toString() ?? '';
-        if (targetId.isNotEmpty && targetId != _userId) return;
+        // Act ONLY when the event explicitly targets THIS client. Never fall
+        // through on an empty/absent id — that would evict/mute EVERYONE in the
+        // room instead of just the moderated user.
+        if (targetId != _userId) return;
         emit(state.copyWith(
           isChatMuted: true,
           chatNoticeMessage:
@@ -743,7 +833,10 @@ class RoomCubit extends Cubit<RoomState> {
         if (payload['channel'] != 'private-rooms.$_roomId' || isClosed) return;
         final data = _decodeData(payload['data']);
         final targetId = data['userId'] as String? ?? '';
-        if (targetId.isNotEmpty && targetId != _userId) return; // not for us
+        // Act ONLY when the event explicitly targets THIS client. Never fall
+        // through on an empty/absent id — that would evict/mute EVERYONE in the
+        // room instead of just the moderated user.
+        if (targetId != _userId) return; // not for us
         await _evictFromRoom();
         if (isClosed) return;
         emit(state.copyWith(
@@ -758,7 +851,10 @@ class RoomCubit extends Cubit<RoomState> {
         if (payload['channel'] != 'private-rooms.$_roomId' || isClosed) return;
         final data = _decodeData(payload['data']);
         final targetId = data['userId'] as String? ?? '';
-        if (targetId.isNotEmpty && targetId != _userId) return;
+        // Act ONLY when the event explicitly targets THIS client. Never fall
+        // through on an empty/absent id — that would evict/mute EVERYONE in the
+        // room instead of just the moderated user.
+        if (targetId != _userId) return;
         await _evictFromRoom();
         if (isClosed) return;
         emit(state.copyWith(
@@ -773,7 +869,10 @@ class RoomCubit extends Cubit<RoomState> {
         if (payload['channel'] != 'private-rooms.$_roomId' || isClosed) return;
         final data = _decodeData(payload['data']);
         final targetId = data['userId']?.toString() ?? '';
-        if (targetId.isNotEmpty && targetId != _userId) return;
+        // Act ONLY when the event explicitly targets THIS client. Never fall
+        // through on an empty/absent id — that would evict/mute EVERYONE in the
+        // room instead of just the moderated user.
+        if (targetId != _userId) return;
         await _evictFromRoom();
         if (isClosed) return;
         emit(state.copyWith(
@@ -781,6 +880,14 @@ class RoomCubit extends Cubit<RoomState> {
             reason: data['message'] as String? ?? '',
           ),
         ));
+
+      // ── Room closed by admin — evict EVERYONE (no per-user target) ─────────
+      case 'RoomClosed':
+      case 'App\\Events\\RoomClosed':
+        if (payload['channel'] != 'private-rooms.$_roomId' || isClosed) return;
+        await _evictFromRoom();
+        if (isClosed) return;
+        emit(state.copyWith(pendingModeration: const RoomClosedEvent()));
 
       // ── Participant join / leave (incremental) ─────────────────────────────
       // Backend can broadcast either the new absolute count in `count`, or we
@@ -1033,10 +1140,18 @@ class RoomCubit extends Cubit<RoomState> {
       //    lives here, so a full room 403s before any Agora resources spin up.
       await _notifyJoinOrThrow();
 
-      // 4. Fetch Agora token from backend
+      // 4. Fetch Agora token from backend.
+      //    role:1 = broadcaster. This is an "everyone can talk" room model —
+      //    every participant joins as a broadcaster (publishMicrophoneTrack)
+      //    and their mute state controls whether they actually transmit. If we
+      //    let the backend auto-detect the role, a freshly-joined listener gets
+      //    an AUDIENCE (role 2) token with NO publish-audio privilege, so the
+      //    moment they unmute Agora silently rejects the mic publish and nobody
+      //    hears them. Always request publish privileges up front.
       debugPrint('[RoomCubit] joinRoom() — fetching Agora token...');
       final tokenResp = await appDio.post('/agora/token', data: {
         'channel_id': _roomId,
+        'role': 1,
       });
 
       // ── UID TRACE ──────────────────────────────────────────────────────────
@@ -1216,8 +1331,28 @@ class RoomCubit extends Cubit<RoomState> {
     debugPrint(
         '[RoomCubit] toggleMute() — isMuted: ${state.isMuted} → $newMuted');
     await AgoraService.instance.muteLocalAudio(mute: newMuted);
-    emit(state.copyWith(isMuted: newMuted));
+    // Reflect our own live mic state on our own grid tile immediately (Agora's
+    // remote-mute callback only fires for OTHER clients, not ourselves).
+    final attendees = state.attendees
+        .map((p) => p.id == _userId ? p.copyWith(isMuted: newMuted) : p)
+        .toList();
+    emit(state.copyWith(isMuted: newMuted, attendees: attendees));
+    unawaited(_playMicSfx(newMuted));
     debugPrint('[RoomCubit] toggleMute() — done. UI state updated.');
+  }
+
+  // Short confirmation blip on every mic toggle (Teams/iPhone-call style) so
+  // the user notices the state actually changed. Never throws into the
+  // caller — a playback hiccup must not affect the mute toggle itself.
+  Future<void> _playMicSfx(bool muted) async {
+    try {
+      await _sfxPlayer.setAsset(
+        muted ? 'assets/sounds/mic_mute.wav' : 'assets/sounds/mic_unmute.wav',
+      );
+      await _sfxPlayer.play();
+    } catch (e) {
+      debugPrint('[RoomCubit] mic sfx error: $e');
+    }
   }
 
   /// Current authenticated user — bubbles compare against this to align
@@ -1331,6 +1466,17 @@ class RoomCubit extends Cubit<RoomState> {
                 data['message'] as String? ?? _chatMutedByAdminMessage,
           ));
         }
+      } else if (e is DioException && e.response?.statusCode == 422) {
+        // Bad-word filter rejected the message — alert the sender so they can
+        // edit it. The message is rolled back below (never stored/broadcast).
+        final data = e.response?.data;
+        final code = data is Map<String, dynamic> ? data['code'] : null;
+        if (code == 'banned_word') {
+          emit(state.copyWith(
+            chatNoticeMessage: data['message'] as String? ??
+                'رسالتك تحتوي على كلمات غير لائقة. يُرجى تعديلها.',
+          ));
+        }
       }
       // Roll back the optimistic message so the user knows send failed.
       if (!isClosed) {
@@ -1425,7 +1571,27 @@ class RoomCubit extends Cubit<RoomState> {
 
       case AgoraSpeakingUpdate(:final speakingUids):
         _applySpeakingUids(speakingUids);
+
+      case AgoraMuteUpdate(:final uid, :final muted):
+        _applyRemoteMute(uid, muted);
     }
+  }
+
+  /// Live mic on/off for a remote participant — flips their grid badge the
+  /// instant Agora reports the change (no backend round-trip, no manual
+  /// refresh). Agora uids equal the participant's user id.
+  void _applyRemoteMute(int uid, bool muted) {
+    if (isClosed || state.attendees.isEmpty) return;
+    final uidStr = uid.toString();
+    var changed = false;
+    final updated = state.attendees.map((p) {
+      if (p.id == uidStr && p.isMuted != muted) {
+        changed = true;
+        return p.copyWith(isMuted: muted);
+      }
+      return p;
+    }).toList();
+    if (changed) emit(state.copyWith(attendees: updated));
   }
 
   /// Reflects Agora's live volume snapshot onto the attendee tiles so the
@@ -1467,6 +1633,7 @@ class RoomCubit extends Cubit<RoomState> {
     _wsSub?.cancel();
     _ws?.sink.close();
     _agoraSub?.cancel();
+    _sfxPlayer.dispose();
 
     // Fire-and-forget leave so the server decrements the count even when
     // the user exits via the system back gesture instead of the Leave button.
@@ -1603,7 +1770,7 @@ class _LivePulseDotState extends State<_LivePulseDot>
                 height: dot,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.livePulse.withValues(alpha: _opacity.value),
+                  color: AppColors.white.withValues(alpha: _opacity.value),
                 ),
               ),
             ),
@@ -1614,7 +1781,7 @@ class _LivePulseDotState extends State<_LivePulseDot>
             height: dot,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.livePulse,
+              color: AppColors.white,
             ),
           ),
         ],
@@ -1651,25 +1818,28 @@ class _AttendeeAvatar extends StatelessWidget {
             : AppColors.background,
       ),
       child: ClipOval(
-        child: Image.network(
+        child: _avatarWithInitials(
           p.avatarUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(
-            LucideIcons.user,
-            size: isLive ? 32 : 28,
-            color: isLive ? Colors.white70 : AppColors.primary,
-          ),
+          p.name,
+          diameter: isLive ? 72 : 68,
+          fontSize: isLive ? 24 : 22,
+          bg: isLive
+              ? AppColors.primaryLight.withValues(alpha: 0.45)
+              : const Color(0x1A305544),
+          fg: isLive ? AppColors.white : AppColors.primary,
         ),
       ),
     );
 
-    // Subtle publishing-status badge — mic for live broadcasters,
-    // mic-off when the broadcaster muted themselves.
+    // Mic-status badge pinned to the avatar corner. Shows for anyone who is
+    // muted (mic-off) — so a muted member is obvious like the admin is — and
+    // for active broadcasters (mic). A muted-off badge tints red for clarity.
+    final showMicBadge = p.isMuted || p.isBroadcaster;
     final badged = Stack(
       clipBehavior: Clip.none,
       children: [
         avatar,
-        if (p.isBroadcaster)
+        if (showMicBadge)
           PositionedDirectional(
             bottom: -2,
             end: -2,
@@ -1677,7 +1847,9 @@ class _AttendeeAvatar extends StatelessWidget {
               width: 22,
               height: 22,
               decoration: BoxDecoration(
-                color: isLive ? AppColors.white : AppColors.primary,
+                color: p.isMuted
+                    ? AppColors.error
+                    : (isLive ? AppColors.white : AppColors.primary),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isLive ? AppColors.primary : AppColors.white,
@@ -1687,11 +1859,14 @@ class _AttendeeAvatar extends StatelessWidget {
               child: Icon(
                 p.isMuted ? LucideIcons.micOff : LucideIcons.mic,
                 size: 11,
-                color: isLive ? AppColors.primary : AppColors.white,
+                color: p.isMuted
+                    ? AppColors.white
+                    : (isLive ? AppColors.primary : AppColors.white),
               ),
             ),
           ),
-        // Moderator pill — gold "مشرف" tag pinned over the avatar's top edge.
+        // Moderator pill — white "مشرف" tag with green text, pinned over the
+        // avatar's top edge (was gold/brown, which clashed with the green).
         if (p.isModerator)
           Positioned(
             top: -6,
@@ -1701,10 +1876,10 @@ class _AttendeeAvatar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary,
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isLive ? AppColors.primary : AppColors.white,
+                    color: AppColors.primary,
                     width: 1.2,
                   ),
                 ),
@@ -1714,7 +1889,7 @@ class _AttendeeAvatar extends StatelessWidget {
                     fontFamily: 'Cairo',
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.white,
+                    color: AppColors.primary,
                     height: 1.25,
                   ),
                 ),
@@ -1724,16 +1899,26 @@ class _AttendeeAvatar extends StatelessWidget {
       ],
     );
 
+    final ringSize = isLive ? 86.0 : 82.0;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        p.isSpeaking
-            ? _PulsingRing(
-                size: isLive ? 86 : 82,
-                color: AppColors.primaryLight,
-                child: badged,
-              )
-            : badged,
+        // Always reserve the pulsing-ring's footprint so the avatar + name
+        // stay at a fixed level — the tile must never jump up/down when
+        // someone starts or stops speaking.
+        SizedBox(
+          width: ringSize,
+          height: ringSize,
+          child: Center(
+            child: p.isSpeaking
+                ? _PulsingRing(
+                    size: ringSize,
+                    color: AppColors.primaryLight,
+                    child: badged,
+                  )
+                : badged,
+          ),
+        ),
         const SizedBox(height: 7),
         Text(
           p.name,
@@ -1782,9 +1967,14 @@ class _SheetSectionHeader extends StatelessWidget {
 // =============================================================================
 class _RoomDetailView extends StatelessWidget {
   final RoomDetailModel room;
+  final RoomState state;
   final RoomCubit cubit;
 
-  const _RoomDetailView({required this.room, required this.cubit});
+  const _RoomDetailView({
+    required this.room,
+    required this.state,
+    required this.cubit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1794,7 +1984,17 @@ class _RoomDetailView extends StatelessWidget {
     final botPad = MediaQuery.of(context).padding.bottom;
     const bottomBarH = 82.0;
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Light nav bar for the (light) pre-join detail page — also restores the
+      // light bar when the user backs out of the dark green live room.
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor:          AppColors.background,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor:   AppColors.background,
+        statusBarColor:                    Colors.transparent,
+        statusBarIconBrightness:           Brightness.dark,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
@@ -1854,6 +2054,8 @@ class _RoomDetailView extends StatelessWidget {
             height: size.height * 0.80,
             child: _RoomInfoSheet(
               room: room,
+              attendees: state.visibleAttendees(cubit.currentUserId),
+              cubit: cubit,
               bottomBarH: bottomBarH,
               botPad: botPad,
             ),
@@ -1909,6 +2111,7 @@ class _RoomDetailView extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -1918,11 +2121,15 @@ class _RoomDetailView extends StatelessWidget {
 // =============================================================================
 class _RoomInfoSheet extends StatelessWidget {
   final RoomDetailModel room;
+  final List<ParticipantModel> attendees;
+  final RoomCubit cubit;
   final double bottomBarH;
   final double botPad;
 
   const _RoomInfoSheet({
     required this.room,
+    required this.attendees,
+    required this.cubit,
     required this.bottomBarH,
     required this.botPad,
   });
@@ -1972,40 +2179,19 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // Animated "live" badge — a pulsing dot signals the room is on air.
+              // Live headcount — directly under the title.
               Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.livePulse.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.livePulse.withValues(alpha: 0.22),
-                      width: 1,
+                child: BlocBuilder<RoomStatusCubit, RoomStatusState>(
+                  buildWhen: (p, c) => p.counts[room.id] != c.counts[room.id],
+                  builder: (ctx, status) => _StatChip(
+                    icon: Icons.people_alt_rounded,
+                    label: l10n.attendeesCount(
+                      status.counts[room.id] ?? room.listenerCount,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _LivePulseDot(size: 7),
-                      const SizedBox(width: 7),
-                      Text(
-                        l10n.liveNow,
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.livePulse,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
-              // Description — muted typography, directly under the title.
+              // Description — muted typography, directly under the count.
               if (room.description.trim().isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(
@@ -2019,28 +2205,12 @@ class _RoomInfoSheet extends StatelessWidget {
                   ),
                 ),
               ],
+              const SizedBox(height: 22),
+              _SheetSectionHeader(text: l10n.attendeesLabel),
               const SizedBox(height: 16),
-              // Unified live headcount — one chip for everyone in the room.
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  BlocBuilder<RoomStatusCubit, RoomStatusState>(
-                    buildWhen: (p, c) => p.counts[room.id] != c.counts[room.id],
-                    builder: (ctx, status) => _StatChip(
-                      icon: Icons.people_alt_rounded,
-                      label: l10n.attendeesCount(
-                        status.counts[room.id] ?? room.listenerCount,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (room.attendees.isNotEmpty) ...[
-                const SizedBox(height: 22),
-                _SheetSectionHeader(text: l10n.attendeesLabel),
-                const SizedBox(height: 16),
-                _AttendeesRow(attendees: room.attendees),
-              ],
+              attendees.isEmpty
+                  ? _NoAttendeesPlaceholder(text: l10n.noAttendeesYet)
+                  : _AttendeesPreviewGrid(attendees: attendees, cubit: cubit),
               const SizedBox(height: 8),
             ],
           ),
@@ -2051,115 +2221,78 @@ class _RoomInfoSheet extends StatelessWidget {
 }
 
 // =============================================================================
-// SECTION 9 — ATTENDEES ROW  (pre-join sheet preview)
+// SECTION 9 — ATTENDEES PREVIEW GRID  (pre-join sheet — live roster)
+//
+// Same avatar+name tile as the in-room grid (_AttendeeAvatar), sized to its
+// intrinsic content height inside the scrollable sheet — this isn't a
+// full-screen view, so it skips the live grid's viewport-filling/centering.
+// Tapping a tile opens the same profile sheet as the in-room grid.
 // =============================================================================
-class _AttendeesRow extends StatelessWidget {
+class _AttendeesPreviewGrid extends StatelessWidget {
   final List<ParticipantModel> attendees;
-  const _AttendeesRow({required this.attendees});
+  final RoomCubit cubit;
 
-  // Overlapping circular stack — first few faces peek out, then a "+X" pill.
-  static const double _avatar = 46;
-  static const double _overlap = 15;
+  const _AttendeesPreviewGrid({required this.attendees, required this.cubit});
 
   @override
   Widget build(BuildContext context) {
-    const maxVisible = 4;
-    final visible = attendees.take(maxVisible).toList();
-    final extraCount = (attendees.length - maxVisible).clamp(0, 99);
-    const step = _avatar - _overlap;
-
-    final slots = visible.length + (extraCount > 0 ? 1 : 0);
-    if (slots == 0) return const SizedBox.shrink();
-    final width = (slots - 1) * step + _avatar;
-
-    final children = <Widget>[];
-    // Paint trailing-to-leading so the first face ends up on top of the stack.
-    for (int i = visible.length - 1; i >= 0; i--) {
-      children.add(PositionedDirectional(
-        start: i * step,
-        child: _StackAvatar(url: visible[i].avatarUrl),
-      ));
-    }
-    if (extraCount > 0) {
-      children.add(PositionedDirectional(
-        start: visible.length * step,
-        child: _ExtraCountChip(count: extraCount),
-      ));
-    }
-
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: SizedBox(
-        height: _avatar,
-        width: width,
-        child: Stack(clipBehavior: Clip.none, children: children),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 88,
+        mainAxisExtent: 100,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 16,
       ),
+      itemCount: attendees.length,
+      itemBuilder: (_, i) {
+        final p = attendees[i];
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showRoomUserProfileSheet(context, p, cubit),
+          child: _AttendeeAvatar(p: p),
+        );
+      },
     );
   }
 }
 
-/// Single circular face in the overlapping attendees stack. The thick surface
-/// ring visually separates avatars where they overlap.
-class _StackAvatar extends StatelessWidget {
-  final String url;
-  const _StackAvatar({required this.url});
+/// Compact empty-state row shown when no one is currently in the room.
+class _NoAttendeesPlaceholder extends StatelessWidget {
+  final String text;
+  const _NoAttendeesPlaceholder({required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 46,
-      height: 46,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.avatarBg,
-        border: Border.all(color: AppColors.surface, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.08),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.userX,
+            size: 26,
+            color: AppColors.textSecondary.withValues(alpha: 0.55),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
-      ),
-      child: ClipOval(
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(
-            LucideIcons.user,
-            size: 20,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Trailing "+X" pill closing the overlapping attendees stack.
-class _ExtraCountChip extends StatelessWidget {
-  final int count;
-  const _ExtraCountChip({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primary,
-        border: Border.all(color: AppColors.surface, width: 2.5),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        '+$count',
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: AppColors.white,
-        ),
       ),
     );
   }
@@ -2175,9 +2308,14 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Icon leads (reading-start side, auto-flips per Directionality) so it
+    // matches the in-room headcount's icon-then-label order instead of
+    // trailing at the visually "reversed" end.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Icon(icon, size: 16, color: AppColors.primary),
+        const SizedBox(width: 5),
         Text(
           label,
           style: const TextStyle(
@@ -2187,8 +2325,6 @@ class _StatChip extends StatelessWidget {
             color: AppColors.primary,
           ),
         ),
-        const SizedBox(width: 5),
-        Icon(icon, size: 16, color: AppColors.primary),
       ],
     );
   }
@@ -2262,7 +2398,11 @@ class _TikTokChatOverlayState extends State<_TikTokChatOverlay>
       _ctrl.forward();
       _scrollToLatest();
     }
-    if (!widget.visible && old.visible) _ctrl.reverse();
+    if (!widget.visible && old.visible) {
+      _ctrl.reverse();
+      // Dismiss the keyboard when the chat closes — otherwise it lingers.
+      FocusScope.of(context).unfocus();
+    }
   }
 
   @override
@@ -2290,52 +2430,70 @@ class _TikTokChatOverlayState extends State<_TikTokChatOverlay>
       child: SlideTransition(
         position: _slide,
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.50,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0.0, 0.40, 1.0],
-                colors: [
-                  Colors.transparent,
-                  Color(0x40000000),
-                  Color(0x80000000),
-                ],
-              ),
+          height: MediaQuery.of(context).size.height * 0.55,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+            child: BackdropFilter(
+            // Frosted sheet — slightly translucent so the room shows through,
+            // rather than a flat opaque white.
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.82),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1F000000),
+                  blurRadius: 24,
+                  offset: Offset(0, -6),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                // Header
+                // Header — drag handle + title + close.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                  child: Column(
                     children: [
-                      GestureDetector(
-                        onTap: widget.onClose,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            LucideIcons.chevronDown,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                      Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBorder,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        l10n.chatTab,
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: widget.onClose,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                LucideIcons.chevronDown,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            l10n.chatTab,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -2384,67 +2542,28 @@ class _TikTokChatOverlayState extends State<_TikTokChatOverlay>
                                   _participantFromMessage(state.messages[i]),
                                   widget.cubit,
                                 ),
+                        // Report a specific message. Only for other users'
+                        // real (non-admin) messages — own messages, admin
+                        // messages (synthetic id), and empty ids aren't
+                        // reportable.
+                        onReportMessage: (state.messages[i].userId ==
+                                    widget.cubit.currentUserId ||
+                                int.tryParse(state.messages[i].userId) == null)
+                            ? null
+                            : () => showReportMessageSheet(
+                                  context,
+                                  userId:
+                                      int.parse(state.messages[i].userId),
+                                  messageContent: state.messages[i].text,
+                                  roomId: widget.cubit.state.roomDetail?.id,
+                                ),
                       ),
                     ),
                     ),
                   ),
                 ),
 
-                // ── Floating Messages toggle ────────────────────────────────
-                BlocBuilder<RoomCubit, RoomState>(
-                  buildWhen: (prev, curr) =>
-                      prev.floatingEnabled != curr.floatingEnabled,
-                  builder: (_, state) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.black.withValues(alpha: 0.20),
-                      border: Border(
-                        top: BorderSide(
-                          color: AppColors.white.withValues(alpha: 0.08),
-                          width: 0.8,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          LucideIcons.sparkles,
-                          color: AppColors.secondary,
-                          size: 15,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            l10n.floatingMessages,
-                            style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.white,
-                            ),
-                          ),
-                        ),
-                        Transform.scale(
-                          scale: 0.82,
-                          child: Switch(
-                            value: state.floatingEnabled,
-                            onChanged: (_) => widget.cubit.toggleFloating(),
-                            activeThumbColor: AppColors.secondary,
-                            activeTrackColor:
-                                AppColors.secondary.withValues(alpha: 0.30),
-                            inactiveThumbColor:
-                                AppColors.white.withValues(alpha: 0.60),
-                            inactiveTrackColor:
-                                AppColors.white.withValues(alpha: 0.12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // Floating-messages toggle moved to Settings (الرسائل العائمة).
 
                 // Input
                 _ChatInput(
@@ -2455,6 +2574,8 @@ class _TikTokChatOverlayState extends State<_TikTokChatOverlay>
                 ),
               ],
             ),
+          ),
+          ),
           ),
         ),
       ),
@@ -2484,8 +2605,12 @@ class _FloatingMessagePreview extends StatelessWidget {
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, animation) {
+          // Slide in from the reading-start edge (right in RTL, left in LTR).
+          final dx = Directionality.of(context) == TextDirection.rtl
+              ? 0.22
+              : -0.22;
           final slide = Tween<Offset>(
-            begin: const Offset(0, 0.24),
+            begin: Offset(dx, 0.10),
             end: Offset.zero,
           ).animate(animation);
           return FadeTransition(
@@ -2513,60 +2638,103 @@ class _FloatingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Role accent: admin/supervisor → gold; user → white
-    final isElevated =
-        message.senderRole == 'admin' || message.senderRole == 'supervisor';
-    final nameColor = isElevated ? AppColors.secondary : AppColors.white;
+    final isAdmin = message.senderRole == 'admin';
+    final isElevated = isAdmin || message.senderRole == 'supervisor';
+    // Elevated senders get a warm accent name; everyone else reads white.
+    final Color nameColor = isElevated ? AppColors.accent : AppColors.white;
+
+    const radius = BorderRadiusDirectional.only(
+      topStart: Radius.circular(6),
+      topEnd: Radius.circular(18),
+      bottomStart: Radius.circular(18),
+      bottomEnd: Radius.circular(18),
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.62,
+        maxWidth: MediaQuery.of(context).size.width * 0.80,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.roomOverlay.withValues(alpha: 0.70),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isElevated
-                    ? AppColors.secondary.withValues(alpha: 0.30)
-                    : AppColors.white.withValues(alpha: 0.10),
-                width: 0.8,
-              ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sender avatar — mirrors the chat/grid avatar styling.
+          ClipOval(
+            child: SizedBox(
+              width: 34,
+              height: 34,
+              child: isAdmin
+                  ? Container(
+                      color: AppColors.primary,
+                      alignment: Alignment.center,
+                      child: const Icon(LucideIcons.shieldCheck,
+                          size: 17, color: AppColors.white),
+                    )
+                  : _roomAvatarImage(
+                      message.senderAvatar,
+                      fallback: Container(
+                        color: AppColors.primary,
+                        child: const Icon(LucideIcons.user,
+                            size: 17, color: AppColors.white),
+                      ),
+                    ),
             ),
-            child: RichText(
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '${message.senderName}  ',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: nameColor,
+          ),
+          const SizedBox(width: 8),
+          // Chat-style bubble — name on top, message below.
+          Flexible(
+            child: ClipRRect(
+              borderRadius: radius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppColors.roomOverlay.withValues(alpha: 0.74),
+                    borderRadius: radius,
+                    border: Border.all(
+                      color: AppColors.white.withValues(alpha: 0.16),
+                      width: 0.8,
                     ),
                   ),
-                  TextSpan(
-                    text: message.text,
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.white,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        message.senderName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: nameColor,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        message.text,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.white,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -2586,18 +2754,23 @@ class _ModerationDialog extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final isKick = event is KickEvent;
     final isGlobalBan = event is GlobalBanEvent;
-    final title = isGlobalBan
-        ? 'تم حظرك من كل الرومات'
-        : isKick
-            ? l10n.kickedFromRoom
-            : l10n.tempBannedFromRoom;
-    final body = isGlobalBan
-        ? ((event as GlobalBanEvent).reason.isNotEmpty
-            ? (event as GlobalBanEvent).reason
-            : 'تم حظر حسابك من دخول الرومات الصوتية بواسطة الإدارة.')
-        : isKick
-            ? l10n.kickedFromRoomBody
-            : l10n.tempBannedFromRoomBody;
+    final isRoomClosed = event is RoomClosedEvent;
+    final title = isRoomClosed
+        ? 'تم إغلاق الغرفة'
+        : isGlobalBan
+            ? 'تم حظرك من كل الرومات'
+            : isKick
+                ? l10n.kickedFromRoom
+                : l10n.tempBannedFromRoom;
+    final body = isRoomClosed
+        ? 'تم إغلاق هذه الغرفة بواسطة الإدارة.'
+        : isGlobalBan
+            ? ((event as GlobalBanEvent).reason.isNotEmpty
+                ? (event as GlobalBanEvent).reason
+                : 'تم حظر حسابك من دخول الرومات الصوتية بواسطة الإدارة.')
+            : isKick
+                ? l10n.kickedFromRoomBody
+                : l10n.tempBannedFromRoomBody;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -2706,6 +2879,11 @@ class _ChatBubble extends StatelessWidget {
   final bool canModerate;
   final VoidCallback? onDelete;
   final VoidCallback? onUserTap;
+  // Long-press the bubble to report THIS specific message (content + sender)
+  // so a moderator sees exactly which message was flagged. Separate from
+  // reporting the user via their avatar. Null → message isn't reportable
+  // (own message, or admin/moderator with a synthetic id).
+  final VoidCallback? onReportMessage;
 
   const _ChatBubble({
     required this.message,
@@ -2713,6 +2891,7 @@ class _ChatBubble extends StatelessWidget {
     this.canModerate = false,
     this.onDelete,
     this.onUserTap,
+    this.onReportMessage,
   });
 
   static const _r = Radius.circular(16);
@@ -2759,7 +2938,7 @@ class _ChatBubble extends StatelessWidget {
               )
             : isElevated
                 ? Border.all(
-                    color: AppColors.secondary.withValues(alpha: 0.45),
+                    color: AppColors.primary.withValues(alpha: 0.55),
                     width: 1.1,
                   )
                 : null,
@@ -2788,7 +2967,7 @@ class _ChatBubble extends StatelessWidget {
                 ? SizedBox(
                     width: 11,
                     height: 11,
-                    child: CircularProgressIndicator(
+                    child: MubtaathLoader(
                       strokeWidth: 1.5,
                       color: timeColor,
                     ),
@@ -2819,7 +2998,7 @@ class _ChatBubble extends StatelessWidget {
           // instead of failing to load a name through Image.network.
           child: isAdmin
               ? Container(
-                  color: AppColors.secondary,
+                  color: AppColors.primary,
                   alignment: Alignment.center,
                   child: const Icon(
                     LucideIcons.shieldCheck,
@@ -2830,7 +3009,7 @@ class _ChatBubble extends StatelessWidget {
               : _roomAvatarImage(
                   message.senderAvatar,
                   fallback: Container(
-                    color: AppColors.secondary,
+                    color: AppColors.primary,
                     child: const Icon(
                       LucideIcons.user,
                       size: 14,
@@ -2857,7 +3036,7 @@ class _ChatBubble extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: isElevated
-                  ? AppColors.secondary
+                  ? AppColors.primary
                   : AppColors.chatSenderName,
               height: 1.0,
             ),
@@ -2871,7 +3050,15 @@ class _ChatBubble extends StatelessWidget {
               _DeleteMessageButton(onTap: onDelete!),
               const SizedBox(width: 6),
             ],
-            bubble,
+            // Long-press → report this message (skipped for own / deleted /
+            // non-reportable messages where onReportMessage is null).
+            (onReportMessage == null || isDeleted)
+                ? bubble
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onLongPress: onReportMessage,
+                    child: bubble,
+                  ),
             if (canModerate && onDelete != null && isMine) ...[
               const SizedBox(width: 6),
               _DeleteMessageButton(onTap: onDelete!),
@@ -2948,84 +3135,66 @@ class _ChatInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(12, 10, 12, bottomPad + 10),
-          decoration: BoxDecoration(
-            color: AppColors.black.withValues(alpha: 0.32),
-            border: Border(
-              top: BorderSide(
-                color: AppColors.white.withValues(alpha: 0.10),
-                width: 0.8,
+    // Single clean bar on the white sheet — one rounded pill, no nested boxes.
+    return Container(
+      padding: EdgeInsets.fromLTRB(14, 10, 14, bottomPad + 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: AppColors.cardBorder, width: 1),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _AnimatedSendButton(onSend: onSend, enabled: enabled),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 56),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: AppColors.cardBorder, width: 1.2),
               ),
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _AnimatedSendButton(onSend: onSend, enabled: enabled),
-              const SizedBox(width: 10),
-              // Clean white pill with DARK text — fixes the white-on-white bug.
-              Expanded(
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 44),
-                  decoration: BoxDecoration(
-                    color: AppColors.chatInputBg,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: AppColors.chatInputBorder,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.black.withValues(alpha: 0.14),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+              child: TextField(
+                controller: ctrl,
+                enabled: enabled,
+                textAlign: TextAlign.start,
+                minLines: 1,
+                maxLines: 4,
+                onSubmitted: (_) {
+                  if (enabled) onSend();
+                },
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(500),
+                ],
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                  color: AppColors.darkText,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: enabled
+                      ? l10n.messagePlaceholder
+                      : _chatMutedByAdminMessage,
+                  hintStyle: const TextStyle(
+                    fontFamily: 'Tajawal',
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                  child: TextField(
-                    controller: ctrl,
-                    enabled: enabled,
-                    textAlign: TextAlign.start,
-                    minLines: 1,
-                    maxLines: 4,
-                    onSubmitted: (_) {
-                      if (enabled) onSend();
-                    },
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(500),
-                    ],
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 13.5,
-                      color: AppColors.chatInputText,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: enabled
-                          ? l10n.messagePlaceholder
-                          : _chatMutedByAdminMessage,
-                      hintStyle: const TextStyle(
-                        fontFamily: 'Tajawal',
-                        fontSize: 13,
-                        color: AppColors.chatInputHint,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 11,
-                      ),
-                    ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 13,
                   ),
+                ),
+              ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 }
@@ -3208,7 +3377,18 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
     final state = widget.state;
     final cubit = widget.cubit;
 
-    return MultiBlocListener(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // The live room is a dark brand-green surface — paint the Android system
+      // nav bar the same green (light icons) so it blends with the page instead
+      // of showing a black strip.
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor:          AppColors.primary,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor:   AppColors.primary,
+        statusBarColor:                    Colors.transparent,
+        statusBarIconBrightness:           Brightness.light,
+      ),
+      child: MultiBlocListener(
       listeners: [
         BlocListener<RoomCubit, RoomState>(
           listenWhen: (prev, curr) =>
@@ -3266,7 +3446,9 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
             Column(
               children: [
                 SizedBox(height: top + 8),
-                const SizedBox(height: 58),
+                // Clears the audio-route button (top-start, 44px tall,
+                // starting at top+12) with room to spare before the title.
+                const SizedBox(height: 78),
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -3414,6 +3596,7 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
                           icon: LucideIcons.messageCircle,
                           onTap: cubit.toggleChat,
                           badgeCount: state.unreadCount,
+                          size: 64,
                         ),
                       ],
                     ),
@@ -3457,12 +3640,15 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
 
             // ── [L2] Floating message overlay ────────────────────────────
             // Driven by the BlocListener above; visible only while the chat
-            // sheet is closed and floating previews are enabled.
+            // sheet is closed and floating previews are enabled. Aligned to the
+            // reading-start edge (right in Arabic) as a chat-style card with the
+            // sender's avatar + name.
             Positioned(
               bottom: bot + 96,
-              left: 24,
-              right: 24,
-              child: Center(
+              left: 14,
+              right: 14,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
                 child: _FloatingMessagePreview(
                   message: _activeFloatingMessage,
                 ),
@@ -3483,6 +3669,7 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -3543,11 +3730,17 @@ class _AttendeesGrid extends StatelessWidget {
                   itemCount: attendees.length,
                   itemBuilder: (_, i) {
                     final p = attendees[i];
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap:
-                          onAttendeeTap == null ? null : () => onAttendeeTap!(p),
-                      child: _AttendeeAvatar(p: p, isLive: true),
+                    // Keyed by participant id so a NEW joiner's tile mounts once
+                    // and slides/fades in, while existing tiles never re-animate.
+                    return _TileAppear(
+                      key: ValueKey(p.id),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onAttendeeTap == null
+                            ? null
+                            : () => onAttendeeTap!(p),
+                        child: _AttendeeAvatar(p: p, isLive: true),
+                      ),
                     );
                   },
                 ),
@@ -3560,6 +3753,41 @@ class _AttendeesGrid extends StatelessWidget {
   }
 }
 
+// Fade + gentle scale-in run once when a grid tile first mounts (i.e. when a
+// participant joins), so new members slide in smoothly instead of popping.
+class _TileAppear extends StatefulWidget {
+  final Widget child;
+  const _TileAppear({super.key, required this.child});
+
+  @override
+  State<_TileAppear> createState() => _TileAppearState();
+}
+
+class _TileAppearState extends State<_TileAppear>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  )..forward();
+
+  late final Animation<double> _fade =
+      CurvedAnimation(parent: _c, curve: Curves.easeOut);
+  late final Animation<double> _scale = Tween<double>(begin: 0.72, end: 1.0)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeOutBack));
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _fade,
+        child: ScaleTransition(scale: _scale, child: widget.child),
+      );
+}
+
 class _MainAttendeeAvatar extends StatelessWidget {
   final ParticipantModel p;
   const _MainAttendeeAvatar({required this.p});
@@ -3568,17 +3796,13 @@ class _MainAttendeeAvatar extends StatelessWidget {
         width: 116,
         height: 116,
         child: ClipOval(
-          child: Image.network(
+          child: _avatarWithInitials(
             p.avatarUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: AppColors.primaryLight.withValues(alpha: 0.55),
-              child: const Icon(
-                LucideIcons.user,
-                size: 52,
-                color: AppColors.white,
-              ),
-            ),
+            p.name,
+            diameter: 116,
+            fontSize: 40,
+            bg: AppColors.primaryLight.withValues(alpha: 0.55),
+            fg: AppColors.white,
           ),
         ),
       );
@@ -3631,7 +3855,7 @@ class _MainAttendeeAvatar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.secondary,
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -3640,7 +3864,7 @@ class _MainAttendeeAvatar extends StatelessWidget {
                 fontFamily: 'Cairo',
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: AppColors.white,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -3672,6 +3896,11 @@ void _showRoomUserProfileSheet(
   // Tapping your own avatar must never open the report/moderation sheet — it is
   // strictly for acting on OTHER users.
   if (participant.id == cubit.currentUserId) return;
+
+  // Admin/moderator tiles carry a synthetic (Agora-uid) id, not a real user id,
+  // and are never reportable/bannable — tapping one is a no-op instead of
+  // firing a doomed GET /users/{hugeUid} that would 404.
+  if (participant.isModerator) return;
 
   final userId = int.tryParse(participant.id);
   final roomId = cubit.state.roomDetail?.id;
@@ -3748,7 +3977,9 @@ class _RoomUserProfileSheet extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.deepDark,
+        // White sheet — the room behind it is already green, so a green/dark
+        // sheet washes out. Content inside reads in green / dark.
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPad + 20),
@@ -3760,7 +3991,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
             width: 38,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.white.withValues(alpha: 0.25),
+              color: AppColors.cardBorder,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3774,9 +4005,9 @@ class _RoomUserProfileSheet extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryLight.withValues(alpha: 0.35),
+                  color: AppColors.avatarBg,
                   border: Border.all(
-                    color: AppColors.secondary.withValues(alpha: 0.45),
+                    color: AppColors.cardBorder,
                     width: 1.4,
                   ),
                 ),
@@ -3786,7 +4017,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
                     fallback: const Icon(
                       LucideIcons.user,
                       size: 22,
-                      color: AppColors.white,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -3804,7 +4035,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
                         fontFamily: 'Cairo',
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.white,
+                        color: AppColors.darkText,
                       ),
                     ),
                     if (participant.isModerator)
@@ -3814,7 +4045,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
                           fontFamily: 'Tajawal',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.secondary,
+                          color: AppColors.primary,
                         ),
                       ),
                   ],
@@ -3823,8 +4054,8 @@ class _RoomUserProfileSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(
-            color: AppColors.white.withValues(alpha: 0.10),
+          const Divider(
+            color: AppColors.cardBorder,
             height: 1,
           ),
           const SizedBox(height: 8),
@@ -3833,8 +4064,8 @@ class _RoomUserProfileSheet extends StatelessWidget {
             _SheetActionTile(
               icon: LucideIcons.userCircle2,
               label: l10n.viewProfile,
-              color: AppColors.white,
-              iconBg: AppColors.primaryLight.withValues(alpha: 0.45),
+              color: AppColors.darkText,
+              iconBg: AppColors.primary.withValues(alpha: 0.10),
               onTap: onViewProfile!,
             ),
           if (onReport != null)
@@ -3847,8 +4078,8 @@ class _RoomUserProfileSheet extends StatelessWidget {
             ),
           if (canModerate) ...[
             const SizedBox(height: 10),
-            Divider(
-              color: AppColors.white.withValues(alpha: 0.10),
+            const Divider(
+              color: AppColors.cardBorder,
               height: 1,
             ),
             const SizedBox(height: 14),
@@ -3860,7 +4091,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
                   fontFamily: 'Cairo',
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.secondary,
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -3869,8 +4100,8 @@ class _RoomUserProfileSheet extends StatelessWidget {
               _SheetActionTile(
                 icon: Icons.voice_over_off_rounded,
                 label: 'بلك من الشات',
-                color: AppColors.white,
-                iconBg: AppColors.primaryLight.withValues(alpha: 0.35),
+                color: AppColors.darkText,
+                iconBg: AppColors.primary.withValues(alpha: 0.10),
                 onTap: onMuteChat!,
               ),
             if (onTempBan != null)
@@ -4045,7 +4276,7 @@ class _SheetActionTile extends StatelessWidget {
                   Icon(
                     LucideIcons.chevronLeft,
                     size: 18,
-                    color: AppColors.white.withValues(alpha: 0.35),
+                    color: AppColors.textSecondary.withValues(alpha: 0.6),
                   ),
             ],
           ),
@@ -4073,7 +4304,7 @@ void _showAudioRouteSheet(BuildContext context, RoomCubit cubit) {
 
         return Container(
           decoration: const BoxDecoration(
-            color: AppColors.deepDark,
+            color: AppColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPad + 20),
@@ -4084,7 +4315,7 @@ void _showAudioRouteSheet(BuildContext context, RoomCubit cubit) {
                 width: 38,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: 0.25),
+                  color: AppColors.cardBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -4097,7 +4328,7 @@ void _showAudioRouteSheet(BuildContext context, RoomCubit cubit) {
                     fontFamily: 'Cairo',
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.white,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -4143,19 +4374,20 @@ class _AudioRouteOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // White sheet: green for the selected route, muted grey for the other.
     return _SheetActionTile(
       icon: icon,
       label: label,
-      color: selected ? AppColors.secondary : AppColors.white,
+      color: selected ? AppColors.primary : AppColors.textSecondary,
       iconBg: selected
-          ? AppColors.secondary.withValues(alpha: 0.18)
-          : AppColors.white.withValues(alpha: 0.08),
+          ? AppColors.primary.withValues(alpha: 0.12)
+          : AppColors.cardBorder.withValues(alpha: 0.45),
       onTap: onTap,
       trailing: selected
           ? const Icon(
               LucideIcons.checkCircle2,
               size: 19,
-              color: AppColors.secondary,
+              color: AppColors.primary,
             )
           : const SizedBox(width: 19),
     );
@@ -4237,6 +4469,7 @@ class _ControlBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final int badgeCount;
+  final double size;
 
   /// Highlighted state (e.g. ghost mode ON) — gold fill, dark icon.
   final bool isActive;
@@ -4246,29 +4479,36 @@ class _ControlBtn extends StatelessWidget {
     required this.onTap,
     this.badgeCount = 0,
     this.isActive = false,
+    this.size = 52,
   });
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = size * (22 / 52);
     return GestureDetector(
       onTap: onTap,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
               color: isActive
-                  ? AppColors.secondary
+                  ? AppColors.white
                   : Colors.white.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 22),
+            child: Icon(icon,
+                color: isActive ? AppColors.primary : Colors.white,
+                size: iconSize),
           ),
+          // Badge sits inset over the circle's corner (not hanging past its
+          // edge) so it reads as one control with an accent, not two shapes.
+          // White chip + green count — matches the room's green/white palette.
           Positioned(
-            right: -2,
-            top: -2,
+            right: 2,
+            top: 2,
             child: badgeCount <= 0
                 ? const SizedBox.shrink()
                 : Container(
@@ -4277,9 +4517,9 @@ class _ControlBtn extends StatelessWidget {
                     constraints:
                         const BoxConstraints(minWidth: 18, minHeight: 18),
                     decoration: BoxDecoration(
-                      color: AppColors.secondary,
+                      color: AppColors.white,
                       borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: AppColors.white, width: 1.4),
+                      border: Border.all(color: AppColors.primary, width: 1.4),
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -4288,7 +4528,7 @@ class _ControlBtn extends StatelessWidget {
                         fontFamily: 'Cairo',
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.white,
+                        color: AppColors.primary,
                         height: 1.0,
                       ),
                     ),
@@ -4426,7 +4666,7 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
             return const Scaffold(
               backgroundColor: AppColors.background,
               body: Center(
-                child: CircularProgressIndicator(
+                child: MubtaathLoader(
                   color: AppColors.primary,
                   strokeWidth: 2.5,
                 ),
@@ -4459,8 +4699,11 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
             child: state.view == RoomView.detail
                 ? KeyedSubtree(
                     key: const ValueKey('detail'),
-                    child:
-                        _RoomDetailView(room: state.roomDetail!, cubit: cubit),
+                    child: _RoomDetailView(
+                      room: state.roomDetail!,
+                      state: state,
+                      cubit: cubit,
+                    ),
                   )
                 : KeyedSubtree(
                     key: const ValueKey('live'),
@@ -4510,7 +4753,7 @@ class _JoiningRoomDialog extends StatelessWidget {
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(
+                  MubtaathLoader(
                     color: AppColors.primary,
                     strokeWidth: 2.8,
                   ),

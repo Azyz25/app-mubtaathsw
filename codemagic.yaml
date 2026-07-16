@@ -17,6 +17,19 @@
 # Signing is AUTOMATIC: Codemagic creates/fetches the certificate + provisioning
 # profile for com.mubtaathub.app using the API key. No manual .p12 upload needed.
 # =============================================================================
+#
+# FIX (2026-07-16): a prior TestFlight export failed with:
+#   "Could not find an option named --no-pub-plugins-and-dependencies-as-swift-packages"
+# That flag is NOT used anywhere in this file — it was injected by Codemagic's
+# own built-in "Flutter App" quickstart workflow (the codeless UI-configured
+# default), which assumes a newer Flutter CLI than the one actually resolved
+# on the build machine. The fix is to build from THIS file instead of that
+# default workflow: in the Codemagic dashboard, start the build by selecting
+# the "ios-testflight" workflow defined below (Codemagic auto-detects
+# codemagic.yaml once it's committed at the repo root) rather than any
+# UI/quickstart workflow of the same app. This file's `flutter build ipa`
+# command is fully explicit, so it can never pick up that unsupported flag.
+# =============================================================================
 
 workflows:
 

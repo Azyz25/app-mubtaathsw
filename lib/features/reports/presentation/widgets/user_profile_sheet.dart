@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/reports/presentation/cubit/user_profile_cubit.dart';
 import 'package:mubtaath/features/reports/presentation/widgets/report_sheet.dart';
 
@@ -93,7 +94,7 @@ class _UserProfileSheet extends StatelessWidget {
               if (isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
-                  child: CircularProgressIndicator(
+                  child: MubtaathLoader(
                     color:       AppColors.primary,
                     strokeWidth: 2.5,
                   ),
@@ -104,7 +105,7 @@ class _UserProfileSheet extends StatelessWidget {
                   userId:  userId,
                 )
               else
-                _ProfileBody(state: state, lang: lang),
+                _ProfileBody(state: state, lang: lang, l10n: l10n),
 
               // ── Report button — shown once loading is done ───────────────
               if (showReport) ...[
@@ -148,8 +149,13 @@ class _UserProfileSheet extends StatelessWidget {
 class _ProfileBody extends StatelessWidget {
   final UserProfileState state;
   final String lang;
+  final AppLocalizations l10n;
 
-  const _ProfileBody({required this.state, required this.lang});
+  const _ProfileBody({
+    required this.state,
+    required this.lang,
+    required this.l10n,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +163,7 @@ class _ProfileBody extends StatelessWidget {
         ? (state.countryNameAr ?? state.countryNameEn ?? '')
         : (state.countryNameEn ?? state.countryNameAr ?? '');
     final flag = state.countryFlag ?? '';
+    final bio  = state.bio?.trim() ?? '';
 
     return Column(
       children: [
@@ -229,6 +236,45 @@ class _ProfileBody extends StatelessWidget {
             ),
           ),
         ],
+
+        // ── Bio (النبذة) — the person's own text, or a graceful fallback ──────
+        const SizedBox(height: 18),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color:        AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.cardBorder, width: 1.2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.fieldBio,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize:   12,
+                  fontWeight: FontWeight.w700,
+                  color:      AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                bio.isNotEmpty ? bio : l10n.noBio,
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize:   13.5,
+                  height:     1.55,
+                  fontStyle:  bio.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                  color: bio.isNotEmpty
+                      ? AppColors.darkText
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

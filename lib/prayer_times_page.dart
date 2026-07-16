@@ -18,8 +18,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/services/location_cache_service.dart';
+import 'package:mubtaath/core/services/prayer_notification_service.dart';
 import 'package:mubtaath/core/utils/nominatim_geocoder.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
 // =============================================================================
@@ -94,15 +97,23 @@ class PrayerState {
   final String           cityEn;
   final String           hijriDate;
   final double           qiblaAngle;
+  final DateTime?        ishaYesterday;     // yesterday's Isha adhan
+  final DateTime?        yesterdayMidnight; // Islamic midnight — end of yesterday's Isha window
+  final DateTime?        todayMidnight;     // Islamic midnight — end of tonight's Isha window
+  final DateTime?        tomorrowFajr;      // countdown target once today's Isha window has closed
 
   const PrayerState({
-    this.status     = PrayerStatus.initial,
-    this.prayers    = const [],
-    this.countdown  = Duration.zero,
-    this.cityAr     = '',
-    this.cityEn     = '',
-    this.hijriDate  = '',
-    this.qiblaAngle = 0.0,
+    this.status        = PrayerStatus.initial,
+    this.prayers       = const [],
+    this.countdown     = Duration.zero,
+    this.cityAr        = '',
+    this.cityEn        = '',
+    this.hijriDate     = '',
+    this.qiblaAngle    = 0.0,
+    this.ishaYesterday,
+    this.yesterdayMidnight,
+    this.todayMidnight,
+    this.tomorrowFajr,
   });
 
   bool get isLoading        => status == PrayerStatus.initial || status == PrayerStatus.loading;
@@ -113,16 +124,81 @@ class PrayerState {
   bool get isPermissionError => status == PrayerStatus.permissionDenied ||
                                 status == PrayerStatus.serviceDisabled;
 
-  // The upcoming prayer (isNext flag)
+  // The upcoming prayer (isNext flag) — null once Isha has passed for today.
   PrayerTime? get nextPrayer => prayers.where((p) => p.isNext).firstOrNull;
 
-  // The most recently started prayer (last past isAdhan prayer)
-  PrayerTime? get currentPrayer {
-    PrayerTime? last;
-    for (final p in prayers) {
-      if (p.isPast && p.isAdhan) last = p;
+  // Same, but falls back to tomorrow's Fajr overnight (after Isha, before the
+  // next day's prayers are computed) so the countdown UI always has a target.
+  PrayerTime? get effectiveNextPrayer {
+    final next = nextPrayer;
+    if (next != null) return next;
+    final fajr = tomorrowFajr;
+    if (fajr == null) return null;
+    return PrayerTime(name: PrayerName.fajr, dateTime: fajr, isNext: true);
+  }
+
+  PrayerTime? _byName(PrayerName n) => prayers.where((p) => p.name == n).firstOrNull;
+
+  // A prayer's display is only shown as "elapsed since adhan" for up to this
+  // long — after that (or once the window itself ends, whichever is sooner)
+  // the hero switches to counting down to the next prayer instead. Adapts
+  // automatically to short gaps (e.g. Maghrib→Isha in some countries can be
+  // well under 45 min) since it's capped by the real window length too.
+  static const int _elapsedCapMinutes = 45;
+
+  /// Which prayer's Shar'i time window `now` currently falls in, per the
+  /// standard fiqh boundaries:
+  ///   Fajr    → ends at sunrise
+  ///   Dhuhr   → ends when Asr begins (shadow = object length)
+  ///   Asr     → ends at Maghrib (sunset)
+  ///   Maghrib → ends when Isha begins (the red twilight disappearing)
+  ///   Isha    → ends at Islamic midnight (midpoint of Maghrib→Fajr), not the
+  ///             next Fajr — after midnight there is no "current" prayer.
+  /// Returns `prayer: null` both during the sunrise→dhuhr gap and once a
+  /// window's on-screen display has run past its (capped) duration — either
+  /// way the hero falls back to a countdown to [effectiveNextPrayer].
+  ({PrayerName? prayer, DateTime? since}) get activeWindow {
+    final fajr    = _byName(PrayerName.fajr);
+    final sunrise = _byName(PrayerName.sunrise);
+    final dhuhr   = _byName(PrayerName.dhuhr);
+    final asr     = _byName(PrayerName.asr);
+    final maghrib = _byName(PrayerName.maghrib);
+    final isha    = _byName(PrayerName.isha);
+    if (fajr == null || sunrise == null || dhuhr == null ||
+        asr == null || maghrib == null || isha == null) {
+      return (prayer: null, since: null);
     }
-    return last;
+
+    final now = DateTime.now();
+    PrayerName name;
+    DateTime start;
+    DateTime windowEnd;
+
+    if (now.isBefore(fajr.dateTime)) {
+      name      = PrayerName.isha;
+      start     = ishaYesterday ?? isha.dateTime;
+      windowEnd = yesterdayMidnight ?? fajr.dateTime;
+    } else if (now.isBefore(sunrise.dateTime)) {
+      name = PrayerName.fajr; start = fajr.dateTime; windowEnd = sunrise.dateTime;
+    } else if (now.isBefore(dhuhr.dateTime)) {
+      return (prayer: null, since: null); // sunrise→dhuhr gap
+    } else if (now.isBefore(asr.dateTime)) {
+      name = PrayerName.dhuhr; start = dhuhr.dateTime; windowEnd = asr.dateTime;
+    } else if (now.isBefore(maghrib.dateTime)) {
+      name = PrayerName.asr; start = asr.dateTime; windowEnd = maghrib.dateTime;
+    } else if (now.isBefore(isha.dateTime)) {
+      name = PrayerName.maghrib; start = maghrib.dateTime; windowEnd = isha.dateTime;
+    } else {
+      name      = PrayerName.isha;
+      start     = isha.dateTime;
+      windowEnd = todayMidnight ?? isha.dateTime;
+    }
+
+    final capMinutes = windowEnd.difference(start).inMinutes.clamp(0, _elapsedCapMinutes);
+    if (now.isBefore(start.add(Duration(minutes: capMinutes)))) {
+      return (prayer: name, since: start);
+    }
+    return (prayer: null, since: null); // past the on-screen cap → countdown mode
   }
 
   PrayerState copyWith({
@@ -133,15 +209,23 @@ class PrayerState {
     String?           cityEn,
     String?           hijriDate,
     double?           qiblaAngle,
+    DateTime?         ishaYesterday,
+    DateTime?         yesterdayMidnight,
+    DateTime?         todayMidnight,
+    DateTime?         tomorrowFajr,
   }) =>
       PrayerState(
-        status:     status     ?? this.status,
-        prayers:    prayers    ?? this.prayers,
-        countdown:  countdown  ?? this.countdown,
-        cityAr:     cityAr     ?? this.cityAr,
-        cityEn:     cityEn     ?? this.cityEn,
-        hijriDate:  hijriDate  ?? this.hijriDate,
-        qiblaAngle: qiblaAngle ?? this.qiblaAngle,
+        status:            status            ?? this.status,
+        prayers:           prayers           ?? this.prayers,
+        countdown:         countdown         ?? this.countdown,
+        cityAr:            cityAr            ?? this.cityAr,
+        cityEn:            cityEn            ?? this.cityEn,
+        hijriDate:         hijriDate         ?? this.hijriDate,
+        qiblaAngle:        qiblaAngle        ?? this.qiblaAngle,
+        ishaYesterday:     ishaYesterday     ?? this.ishaYesterday,
+        yesterdayMidnight: yesterdayMidnight ?? this.yesterdayMidnight,
+        todayMidnight:     todayMidnight     ?? this.todayMidnight,
+        tomorrowFajr:      tomorrowFajr      ?? this.tomorrowFajr,
       );
 }
 
@@ -222,67 +306,112 @@ class PrayerCubit extends Cubit<PrayerState> {
   DateTime? _calcDay; // date on which prayers were last calculated
 
   CalculationParameters _paramsForCountry(String iso) {
-    switch (iso.toUpperCase()) {
+    final code = iso.toUpperCase();
+
+    // Official calculation authority per country → matches the local mosques.
+    final CalculationParameters params;
+    switch (code) {
       case 'SA': case 'YE': case 'JO': case 'SY':
-        return CalculationMethod.umm_al_qura.getParameters();
+        params = CalculationMethod.umm_al_qura.getParameters();
       case 'US': case 'CA': case 'MX':
-        return CalculationMethod.north_america.getParameters();
+        params = CalculationMethod.north_america.getParameters();
       case 'AE':
-        return CalculationMethod.dubai.getParameters();
+        params = CalculationMethod.dubai.getParameters();
       case 'KW':
-        return CalculationMethod.kuwait.getParameters();
+        params = CalculationMethod.kuwait.getParameters();
       case 'QA':
-        return CalculationMethod.qatar.getParameters();
+        params = CalculationMethod.qatar.getParameters();
       case 'EG':
-        return CalculationMethod.egyptian.getParameters();
+        params = CalculationMethod.egyptian.getParameters();
       case 'PK': case 'BD': case 'AF': case 'IN':
-        return CalculationMethod.karachi.getParameters();
+        params = CalculationMethod.karachi.getParameters();
       case 'TR':
-        return CalculationMethod.turkey.getParameters();
+        params = CalculationMethod.turkey.getParameters();
       case 'SG': case 'MY':
-        return CalculationMethod.singapore.getParameters();
+        params = CalculationMethod.singapore.getParameters();
       default:
-        return CalculationMethod.muslim_world_league.getParameters();
+        params = CalculationMethod.muslim_world_league.getParameters();
     }
+
+    // Madhab governs the Asr calculation — Hanafi in South-Asian regions,
+    // Shafi (the standard) everywhere else.
+    params.madhab = switch (code) {
+      'PK' || 'BD' || 'AF' || 'IN' => Madhab.hanafi,
+      _                            => Madhab.shafi,
+    };
+    return params;
   }
 
-  // ── Full init: GPS fetch + geocode + calculate ──────────────────────────────
+  // ── Init: instant from cache when available, GPS only the first time ───────
+  // Opening the page should never make the user wait on GPS+geocoding again
+  // once a location has been fetched once. If a cached fix exists, show it
+  // immediately and silently check for a real move in the background; only
+  // a cold start (no cache yet) or the manual refresh button does a full,
+  // loading-spinner GPS fetch.
   Future<void> _init() async {
     _timer?.cancel();
     if (isClosed) return;
-    emit(state.copyWith(status: PrayerStatus.loading));
 
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final cached = await LocationCacheService.instance.read();
     if (isClosed) return;
-    if (!serviceEnabled) {
-      emit(state.copyWith(status: PrayerStatus.serviceDisabled));
+
+    if (cached != null) {
+      _lat     = cached.lat;
+      _lng     = cached.lng;
+      _isoCode = cached.isoCode;
+      _cityAr  = cached.cityAr;
+      _cityEn  = cached.cityEn;
+      _recalculate();
+      _startTimer();
+      unawaited(_refreshLocationInBackground());
       return;
     }
 
+    emit(state.copyWith(status: PrayerStatus.loading));
+    final ok = await _fetchAndCacheLocation();
+    if (!ok || isClosed) return;
+    _recalculate();
+    _startTimer();
+  }
+
+  // ── Full GPS fetch + geocode + cache write. Mutates _lat/_lng/_isoCode/
+  //    _cityAr/_cityEn on success. Returns false if it already emitted an
+  //    error/permission state (caller should stop there). ───────────────────
+  Future<bool> _fetchAndCacheLocation() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (isClosed) return false;
+    if (!serviceEnabled) {
+      emit(state.copyWith(status: PrayerStatus.serviceDisabled));
+      return false;
+    }
+
     LocationPermission perm = await Geolocator.checkPermission();
-    if (isClosed) return;
+    if (isClosed) return false;
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
-      if (isClosed) return;
+      if (isClosed) return false;
     }
     if (perm == LocationPermission.denied ||
         perm == LocationPermission.deniedForever) {
       emit(state.copyWith(status: PrayerStatus.permissionDenied));
-      return;
+      return false;
     }
 
     Position pos;
     try {
+      // .best requests the highest-precision GPS fix the device can deliver
+      // (as opposed to a coarser network/Wi-Fi-assisted fix) — prayer times
+      // are computed from these exact coordinates, not a city lookup.
       pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 20),
       );
     } catch (_) {
-      if (isClosed) return;
+      if (isClosed) return false;
       emit(state.copyWith(status: PrayerStatus.error));
-      return;
+      return false;
     }
-    if (isClosed) return;
+    if (isClosed) return false;
 
     _lat = pos.latitude;
     _lng = pos.longitude;
@@ -290,7 +419,7 @@ class PrayerCubit extends Cubit<PrayerState> {
     // 1. Local geocoding — fast on real devices, fails silently on web/simulators.
     try {
       final places = await geo.placemarkFromCoordinates(_lat!, _lng!);
-      if (isClosed) return;
+      if (isClosed) return false;
       if (places.isNotEmpty) {
         final p = places.first;
         _isoCode = p.isoCountryCode ?? 'GB';
@@ -299,7 +428,7 @@ class PrayerCubit extends Cubit<PrayerState> {
         _cityAr = label;
       }
     } catch (_) {
-      if (isClosed) return;
+      if (isClosed) return false;
     }
 
     // 2. Nominatim fallback — fires when local geocoding returns empty
@@ -307,13 +436,75 @@ class PrayerCubit extends Cubit<PrayerState> {
     //    Returns bilingual "City، Country" / "City, Country" labels.
     if (_cityEn.isEmpty) {
       final (:ar, :en) = await nominatimReverse(_lat!, _lng!);
-      if (isClosed) return;
+      if (isClosed) return false;
       if (ar.isNotEmpty) _cityAr = ar;
       if (en.isNotEmpty) _cityEn = en;
     }
+    if (isClosed) return false;
 
-    _recalculate();
-    _startTimer();
+    await LocationCacheService.instance.write(CachedLocation(
+      lat: _lat!, lng: _lng!, isoCode: _isoCode, cityAr: _cityAr, cityEn: _cityEn,
+    ));
+    return true;
+  }
+
+  // ── Silent background check — only touches the UI if the device has
+  //    actually moved a meaningful distance since the cached fix. ───────────
+  Future<void> _refreshLocationInBackground() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled || isClosed) return;
+
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        timeLimit: const Duration(seconds: 20),
+      );
+      if (isClosed) return;
+
+      final movedMeters = (_lat != null && _lng != null)
+          ? Geolocator.distanceBetween(_lat!, _lng!, pos.latitude, pos.longitude)
+          : double.infinity;
+      if (movedMeters < LocationCacheService.significantMoveMeters) return;
+
+      _lat = pos.latitude;
+      _lng = pos.longitude;
+      _cityAr = '';
+      _cityEn = '';
+
+      try {
+        final places = await geo.placemarkFromCoordinates(_lat!, _lng!);
+        if (isClosed) return;
+        if (places.isNotEmpty) {
+          final p = places.first;
+          _isoCode = p.isoCountryCode ?? _isoCode;
+          final label = _bestPlacemarkLabel(p);
+          _cityEn = label;
+          _cityAr = label;
+        }
+      } catch (_) {
+        if (isClosed) return;
+      }
+      if (_cityEn.isEmpty) {
+        final (:ar, :en) = await nominatimReverse(_lat!, _lng!);
+        if (isClosed) return;
+        if (ar.isNotEmpty) _cityAr = ar;
+        if (en.isNotEmpty) _cityEn = en;
+      }
+      if (isClosed) return;
+
+      await LocationCacheService.instance.write(CachedLocation(
+        lat: _lat!, lng: _lng!, isoCode: _isoCode, cityAr: _cityAr, cityEn: _cityEn,
+      ));
+      _recalculate();
+    } catch (_) {
+      // Silent — the cached data already on screen remains valid either way.
+    }
   }
 
   // ── Fast recalculate using cached coords (no GPS, no loading flash) ─────────
@@ -323,22 +514,56 @@ class PrayerCubit extends Cubit<PrayerState> {
     final now    = DateTime.now();
     final coords = Coordinates(_lat!, _lng!);
     final params = _paramsForCountry(_isoCode);
+
+    // Far from the equator the sun may not reach the twilight angle, which
+    // distorts Fajr/Isha. The seventh-of-the-night rule keeps them realistic.
+    if (_lat!.abs() >= 48) {
+      params.highLatitudeRule = HighLatitudeRule.seventh_of_the_night;
+    }
+
     final pt     = PrayerTimes(coords, DateComponents.from(now), params);
     final qibla  = Qibla(coords).direction;
     final hijri  = _computeHijriDate(now);
     final prayers = _buildPrayers(pt);
     _calcDay = DateTime(now.year, now.month, now.day);
 
+    // Islamic "midnight" — the fiqh-correct end of Isha's window — is the
+    // midpoint between Maghrib and the FOLLOWING Fajr, not clock midnight and
+    // not "whenever tomorrow's Fajr happens to be". Need yesterday's and
+    // tomorrow's prayer times (pure math from cached coords — no GPS) to
+    // bound both the overnight (pre-Fajr) and tonight's Isha windows.
+    final yesterday   = DateTime(now.year, now.month, now.day - 1);
+    final tomorrow    = DateTime(now.year, now.month, now.day + 1);
+    final ptYesterday = PrayerTimes(coords, DateComponents.from(yesterday), params);
+    final ptTomorrow  = PrayerTimes(coords, DateComponents.from(tomorrow), params);
+
+    final ishaYesterday    = ptYesterday.isha.toLocal();
+    final maghribYesterday = ptYesterday.maghrib.toLocal();
+    final maghribToday     = pt.maghrib.toLocal();
+    final fajrToday        = pt.fajr.toLocal();
+    final fajrTomorrow     = ptTomorrow.fajr.toLocal();
+
+    DateTime midpoint(DateTime a, DateTime b) =>
+        a.add(Duration(milliseconds: b.difference(a).inMilliseconds ~/ 2));
+
+    final yesterdayMidnight = midpoint(maghribYesterday, fajrToday);
+    final todayMidnight     = midpoint(maghribToday, fajrTomorrow);
+
     final next = prayers.where((p) => p.isNext).firstOrNull;
+    final effectiveNext = next ?? PrayerTime(name: PrayerName.fajr, dateTime: fajrTomorrow, isNext: true);
 
     emit(PrayerState(
-      status:     PrayerStatus.loaded,
-      prayers:    prayers,
-      countdown:  next != null ? _remaining(next) : Duration.zero,
-      cityAr:     _cityAr,
-      cityEn:     _cityEn,
-      hijriDate:  hijri,
-      qiblaAngle: qibla,
+      status:            PrayerStatus.loaded,
+      prayers:           prayers,
+      countdown:         _remaining(effectiveNext),
+      cityAr:            _cityAr,
+      cityEn:            _cityEn,
+      hijriDate:         hijri,
+      qiblaAngle:        qibla,
+      ishaYesterday:     ishaYesterday,
+      yesterdayMidnight: yesterdayMidnight,
+      todayMidnight:     todayMidnight,
+      tomorrowFajr:      fajrTomorrow,
     ));
   }
 
@@ -370,6 +595,37 @@ class PrayerCubit extends Cubit<PrayerState> {
     return diff.isNegative ? Duration.zero : diff;
   }
 
+  /// Future adhan-prayer instants for the next [days] days — used to schedule
+  /// notifications ahead of time. Empty until GPS coords are known. Sunrise is
+  /// excluded (it is not a prayer to be notified about).
+  List<({PrayerName name, DateTime at})> upcomingPrayerInstants({int days = 5}) {
+    if (_lat == null || _lng == null) return const [];
+
+    final coords = Coordinates(_lat!, _lng!);
+    final params = _paramsForCountry(_isoCode);
+    if (_lat!.abs() >= 48) {
+      params.highLatitudeRule = HighLatitudeRule.seventh_of_the_night;
+    }
+
+    final now = DateTime.now();
+    final out = <({PrayerName name, DateTime at})>[];
+    for (var d = 0; d < days; d++) {
+      final day = DateTime(now.year, now.month, now.day + d);
+      final pt  = PrayerTimes(coords, DateComponents.from(day), params);
+      final slots = <(PrayerName, DateTime)>[
+        (PrayerName.fajr,    pt.fajr.toLocal()),
+        (PrayerName.dhuhr,   pt.dhuhr.toLocal()),
+        (PrayerName.asr,     pt.asr.toLocal()),
+        (PrayerName.maghrib, pt.maghrib.toLocal()),
+        (PrayerName.isha,    pt.isha.toLocal()),
+      ];
+      for (final s in slots) {
+        if (s.$2.isAfter(now)) out.add((name: s.$1, at: s.$2));
+      }
+    }
+    return out;
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (isClosed || !state.isLoaded) return;
@@ -383,10 +639,14 @@ class PrayerCubit extends Cubit<PrayerState> {
         return;
       }
 
-      final next = state.nextPrayer;
-
-      // All prayers done for today — keep countdown at zero, nothing to do
-      if (next == null) return;
+      // effectiveNextPrayer falls back to tomorrow's Fajr once today's Isha
+      // has passed, so the countdown keeps counting down through the night
+      // instead of freezing at zero once nothing is left "today".
+      final next = state.effectiveNextPrayer;
+      if (next == null) {
+        emit(state.copyWith(countdown: Duration.zero));
+        return;
+      }
 
       final rem = next.dateTime.difference(now);
       if (rem.isNegative) {
@@ -400,7 +660,17 @@ class PrayerCubit extends Cubit<PrayerState> {
     });
   }
 
-  void refresh() => _init();
+  // Manual refresh (tap the toolbar icon) always forces a real GPS fetch —
+  // unlike _init(), it deliberately bypasses the cache.
+  Future<void> refresh() async {
+    _timer?.cancel();
+    if (isClosed) return;
+    emit(state.copyWith(status: PrayerStatus.loading));
+    final ok = await _fetchAndCacheLocation();
+    if (!ok || isClosed) return;
+    _recalculate();
+    _startTimer();
+  }
 
   @override
   Future<void> close() async {
@@ -426,14 +696,14 @@ String _fmtDuration(Duration d) {
 // =============================================================================
 
 class _NextPrayerHero extends StatelessWidget {
-  final PrayerTime? nextPrayer;    // null = all prayers done for the day
-  final PrayerTime? currentPrayer; // null = before Fajr
+  final PrayerTime? nextPrayer; // used only in the gap (sunrise→dhuhr) state
+  final ({PrayerName? prayer, DateTime? since}) activeWindow;
   final Duration    countdown;
   final String      cityLabel;
 
   const _NextPrayerHero({
     required this.nextPrayer,
-    required this.currentPrayer,
+    required this.activeWindow,
     required this.countdown,
     required this.cityLabel,
   });
@@ -442,219 +712,149 @@ class _NextPrayerHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    final activePrayer = activeWindow.prayer;
+    final since         = activeWindow.since;
+    final elapsed = since != null
+        ? DateTime.now().difference(since)
+        : Duration.zero;
+
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryDark,
-            AppColors.primary,
-            AppColors.primaryLight,
-          ],
-          stops: [0.0, 0.55, 1.0],
+          begin:  Alignment.topRight,
+          end:    Alignment.bottomLeft,
+          colors: [AppColors.primaryDark, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: AppColors.secondary.withValues(alpha: 0.28),
-          width: 1.0,
-        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color:      AppColors.primaryDark.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset:     const Offset(0, 10),
-          ),
-          BoxShadow(
-            color:       AppColors.secondary.withValues(alpha: 0.08),
-            blurRadius:  40,
-            spreadRadius: 2,
+            color:      AppColors.primary.withValues(alpha: 0.30),
+            blurRadius: 20,
+            offset:     const Offset(0, 8),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // Decorative gold orb — top right
-            Positioned(
-              top: -40, right: -30,
-              child: Container(
-                width: 120, height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.secondary.withValues(alpha: 0.10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // City
+          if (cityLabel.isNotEmpty)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.mapPin,
+                    color: AppColors.white.withValues(alpha: 0.75), size: 13),
+                const SizedBox(width: 5),
+                Text(
+                  cityLabel,
+                  style: TextStyle(
+                    fontFamily: 'Tajawal', fontSize: 13,
+                    color: AppColors.white.withValues(alpha: 0.75),
+                  ),
                 ),
-              ),
+              ],
             ),
-            // Decorative white orb — bottom left
-            Positioned(
-              bottom: -25, left: -20,
-              child: Container(
-                width: 90, height: 90,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.05),
-                ),
-              ),
-            ),
+          const SizedBox(height: 18),
 
-            // ── Content ──────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          if (activePrayer != null) ...[
+            // ── Inside a prayer's Shar'i window: count UP since its adhan ──
+            Row(
+              children: [
+                Icon(activePrayer.icon, color: AppColors.accent, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.elapsedSincePrayer(activePrayer.label(l10n)),
+                    style: const TextStyle(
+                      fontFamily: 'Cairo', fontSize: 20,
+                      fontWeight: FontWeight.w800, color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            Center(
+              child: Text(
+                _fmtDuration(elapsed),
+                style: const TextStyle(
+                  fontFamily: 'Cairo', fontSize: 38,
+                  fontWeight: FontWeight.w800, color: AppColors.white,
+                  letterSpacing: 3,
+                ),
+              ),
+            ),
+          ] else ...[
+            // ── Gap between Fajr's window and Dhuhr: countdown to Dhuhr ──
+            Text(
+              l10n.nextPrayer,
+              style: TextStyle(
+                fontFamily: 'Tajawal', fontSize: 12.5,
+                color: AppColors.white.withValues(alpha: 0.65),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (nextPrayer != null)
+              Row(
                 children: [
-
-                  // Row: current-prayer badge  +  city pin
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Current prayer badge
-                      if (currentPrayer != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.secondary.withValues(alpha: 0.40),
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                currentPrayer!.name.icon,
-                                color: AppColors.secondary, size: 13,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                currentPrayer!.name.label(l10n),
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo', fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      const Spacer(),
-
-                      // City label
-                      if (cityLabel.isNotEmpty)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              LucideIcons.mapPin,
-                              color: AppColors.white.withValues(alpha: 0.55),
-                              size: 12,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              cityLabel,
-                              style: TextStyle(
-                                fontFamily: 'Tajawal', fontSize: 12,
-                                color: AppColors.white.withValues(alpha: 0.60),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                  Divider(color: AppColors.white.withValues(alpha: 0.10)),
-                  const SizedBox(height: 14),
-
-                  // Next prayer label
+                  Icon(nextPrayer!.name.icon, color: AppColors.accent, size: 24),
+                  const SizedBox(width: 10),
                   Text(
-                    l10n.nextPrayer,
-                    style: TextStyle(
-                      fontFamily: 'Tajawal', fontSize: 12,
-                      color: AppColors.white.withValues(alpha: 0.55),
+                    nextPrayer!.name.label(l10n),
+                    style: const TextStyle(
+                      fontFamily: 'Cairo', fontSize: 26,
+                      fontWeight: FontWeight.w800, color: AppColors.white,
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  // Prayer name + time row
-                  if (nextPrayer != null)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(
-                          nextPrayer!.name.icon,
-                          color: AppColors.secondary, size: 22,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          nextPrayer!.name.label(l10n),
-                          style: const TextStyle(
-                            fontFamily: 'Cairo', fontSize: 24,
-                            fontWeight: FontWeight.w800, color: AppColors.white,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          nextPrayer!.formatted(l10n: l10n),
-                          style: TextStyle(
-                            fontFamily: 'Tajawal', fontSize: 15,
-                            color: AppColors.white.withValues(alpha: 0.80),
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Text(
-                      l10n.prayersComplete,
-                      style: TextStyle(
-                        fontFamily: 'Cairo', fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.white.withValues(alpha: 0.75),
-                      ),
-                    ),
-
-                  const SizedBox(height: 20),
-
-                  // Countdown
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          l10n.timeRemaining,
-                          style: TextStyle(
-                            fontFamily: 'Tajawal', fontSize: 11,
-                            color: AppColors.white.withValues(alpha: 0.50),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _fmtDuration(countdown),
-                          style: const TextStyle(
-                            fontFamily:    'Cairo', fontSize: 36,
-                            fontWeight:    FontWeight.w800,
-                            color:         AppColors.white,
-                            letterSpacing: 4,
-                          ),
-                        ),
-                      ],
+                  const Spacer(),
+                  Text(
+                    nextPrayer!.formatted(l10n: l10n),
+                    style: TextStyle(
+                      fontFamily: 'Tajawal', fontSize: 16, fontWeight: FontWeight.w600,
+                      color: AppColors.white.withValues(alpha: 0.85),
                     ),
                   ),
                 ],
+              )
+            else
+              Text(
+                l10n.prayersComplete,
+                style: TextStyle(
+                  fontFamily: 'Cairo', fontSize: 20, fontWeight: FontWeight.w700,
+                  color: AppColors.white.withValues(alpha: 0.80),
+                ),
               ),
-            ),
+            if (nextPrayer != null) ...[
+              const SizedBox(height: 22),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.timeRemaining,
+                      style: TextStyle(
+                        fontFamily: 'Tajawal', fontSize: 11,
+                        color: AppColors.white.withValues(alpha: 0.55),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _fmtDuration(countdown),
+                      style: const TextStyle(
+                        fontFamily: 'Cairo', fontSize: 38,
+                        fontWeight: FontWeight.w800, color: AppColors.white,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -771,14 +971,11 @@ class _QiblaAccessCard extends StatelessWidget {
             Container(
               width: 52, height: 52,
               decoration: BoxDecoration(
-                color:        AppColors.secondary.withValues(alpha: 0.22),
+                color:        AppColors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: 0.40), width: 1.5,
-                ),
               ),
               child: const Icon(
-                LucideIcons.compass, color: AppColors.secondary, size: 28,
+                LucideIcons.compass, color: AppColors.primary, size: 28,
               ),
             ),
             const SizedBox(width: 16),
@@ -851,14 +1048,6 @@ class _DateRow extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              city,
-              style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 15,
-                fontWeight: FontWeight.w700, color: AppColors.darkText,
-              ),
-            ),
-            const SizedBox(width: 6),
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
@@ -866,6 +1055,14 @@ class _DateRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(LucideIcons.mapPin, color: AppColors.primary, size: 16),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              city,
+              style: const TextStyle(
+                fontFamily: 'Cairo', fontSize: 15,
+                fontWeight: FontWeight.w700, color: AppColors.darkText,
+              ),
             ),
           ],
         ),
@@ -915,8 +1112,10 @@ class _StaticQiblaPreview extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🕋', style: TextStyle(fontSize: 28)),
-              const SizedBox(height: 4),
+              const KaabaOutlineIcon(
+                size: 30, color: AppColors.primary, strokeWidth: 2,
+              ),
+              const SizedBox(height: 6),
               Text(
                 l10n.kaabaDirection,
                 style: const TextStyle(
@@ -1033,10 +1232,14 @@ class PrayerTimesPage extends StatefulWidget {
 class _PrayerTimesPageState extends State<PrayerTimesPage> {
   late final PrayerCubit _cubit;
 
+  bool _notifEnabled = false;
+  bool _notifBusy    = false;
+
   @override
   void initState() {
     super.initState();
     _cubit = PrayerCubit();
+    _loadNotifPref();
   }
 
   @override
@@ -1045,13 +1248,114 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
     super.dispose();
   }
 
+  // ── Notifications ───────────────────────────────────────────────────────────
+
+  Future<void> _loadNotifPref() async {
+    final enabled = await PrayerNotificationService.instance.isEnabled();
+    if (!mounted) return;
+
+    // The toggle may say "on" while the OS permission was actually revoked
+    // from system settings since — zonedSchedule() would keep "succeeding"
+    // while Android silently drops delivery. Catch that here instead of
+    // letting the toggle lie about its state.
+    if (enabled) {
+      final stillGranted =
+          await PrayerNotificationService.instance.hasNotificationPermission();
+      if (!mounted) return;
+      if (!stillGranted) {
+        await PrayerNotificationService.instance.disable();
+        if (!mounted) return;
+        setState(() => _notifEnabled = false);
+        return;
+      }
+    }
+
+    setState(() => _notifEnabled = enabled);
+    // If already enabled and prayers are ready, refresh the schedule on open.
+    if (enabled && _cubit.state.isLoaded) {
+      _reschedule(AppLocalizations.of(context)!);
+    }
+  }
+
+  List<PrayerNotif> _buildNotifs(AppLocalizations l10n) {
+    final instants = _cubit.upcomingPrayerInstants(days: 5);
+    var id = 1000;
+    return [
+      for (final e in instants)
+        PrayerNotif(
+          id:       id++,
+          dateTime: e.at,
+          title:    e.name.label(l10n),
+          body:     l10n.prayerTimeNow(e.name.label(l10n)),
+        ),
+    ];
+  }
+
+  Future<void> _reschedule(AppLocalizations l10n) =>
+      PrayerNotificationService.instance.schedule(_buildNotifs(l10n));
+
+  // Long-press the bell → fire a test notification now (+ one 12s out so
+  // background delivery can be verified).
+  Future<void> _sendTestNotif(AppLocalizations l10n) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await PrayerNotificationService.instance.sendTest(
+      l10n.prayerNotifTestTitle,
+      l10n.prayerNotifTestBody,
+    );
+    if (!mounted) return;
+    messenger.showSnackBar(SnackBar(
+      content: Text(ok ? l10n.prayerNotifTestSent : l10n.prayerNotifBlocked),
+    ));
+  }
+
+  Future<void> _toggleNotif(AppLocalizations l10n) async {
+    if (_notifBusy) return;
+    setState(() => _notifBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (_notifEnabled) {
+        await PrayerNotificationService.instance.disable();
+        if (!mounted) return;
+        setState(() => _notifEnabled = false);
+        messenger.showSnackBar(SnackBar(content: Text(l10n.prayerNotifOff)));
+      } else {
+        // A real location failure means upcomingPrayerInstants() is always
+        // empty — enable() would "succeed" having scheduled nothing, with
+        // the toggle stuck showing on forever and no way to self-heal.
+        // Refuse and say why instead of lying about the state.
+        if (_cubit.state.hasError) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.prayerNotifLocationError)),
+          );
+          return;
+        }
+        final ok = await PrayerNotificationService.instance
+            .enable(_buildNotifs(l10n));
+        if (!mounted) return;
+        setState(() => _notifEnabled = ok);
+        messenger.showSnackBar(SnackBar(
+          content: Text(ok ? l10n.prayerNotifOn : l10n.prayerNotifBlocked),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _notifBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _cubit,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: BlocBuilder<PrayerCubit, PrayerState>(
+        body: BlocConsumer<PrayerCubit, PrayerState>(
+          // Reschedule only when the prayer TIMES change (not on every 1-second
+          // countdown tick, which reuses the same prayers list reference).
+          listenWhen: (prev, curr) =>
+              curr.isLoaded && !identical(prev.prayers, curr.prayers),
+          listener: (context, state) {
+            if (_notifEnabled) _reschedule(AppLocalizations.of(context)!);
+          },
           builder: (context, state) {
             final l10n = AppLocalizations.of(context)!;
             final lang = Localizations.localeOf(context).languageCode;
@@ -1059,6 +1363,31 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
             final header = SharedHeader(
               title: l10n.prayerTimesTitle,
               trailing: [
+                // Prayer-notification on/off toggle
+                Tooltip(
+                  message: l10n.prayerNotifTooltip,
+                  child: GestureDetector(
+                    onTap: _notifBusy ? null : () => _toggleNotif(l10n),
+                    onLongPress: () => _sendTestNotif(l10n),
+                    child: Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: _notifEnabled
+                            ? AppColors.primary.withValues(alpha: 0.14)
+                            : AppColors.primary.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _notifEnabled ? LucideIcons.bell : LucideIcons.bellOff,
+                        color: _notifEnabled
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 GestureDetector(
                   onTap: _cubit.refresh,
                   child: Container(
@@ -1088,7 +1417,7 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircularProgressIndicator(
+                            const MubtaathLoader(
                               color: AppColors.primary, strokeWidth: 2.5,
                             ),
                             const SizedBox(height: 16),
@@ -1133,8 +1462,12 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
 
             return SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+              child: MubtaathRefresh(
+                onRefresh: () => context.read<PrayerCubit>().refresh(),
+                child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1154,10 +1487,10 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
 
                           // Premium countdown hero card (always shown when loaded)
                           _NextPrayerHero(
-                            nextPrayer:    state.nextPrayer,
-                            currentPrayer: state.currentPrayer,
-                            countdown:     state.countdown,
-                            cityLabel:     cityLabel,
+                            nextPrayer:   state.effectiveNextPrayer,
+                            activeWindow: state.activeWindow,
+                            countdown:    state.countdown,
+                            cityLabel:    cityLabel,
                           ),
                           const SizedBox(height: 24),
 
@@ -1193,6 +1526,7 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },

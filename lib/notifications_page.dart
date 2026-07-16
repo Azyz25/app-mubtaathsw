@@ -29,6 +29,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/reverb_service.dart';
+import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -817,9 +818,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 Expanded(
                   child: state.loading
                       ? const CoreLoadingIndicator()
-                      : RefreshIndicator(
+                      : MubtaathRefresh(
                           onRefresh: cubit.refresh,
-                          color:     _D.primary,
                           child: state.items.isEmpty
                               ? CoreEmptyState(
                                   icon:     LucideIcons.bellOff,
@@ -854,7 +854,9 @@ class _NotifList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return ListView.builder(
-      physics:   const BouncingScrollPhysics(),
+      physics:   const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       padding:   const EdgeInsets.fromLTRB(_D.hPad, 0, _D.hPad, 32),
       itemCount: flat.length,
       itemBuilder: (ctx, i) {

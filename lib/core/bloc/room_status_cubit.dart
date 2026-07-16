@@ -1,9 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/services/rooms_count_service.dart';
 
 // Holds live participant counts for every room the app knows about.
-// Seeded from the rooms list on load; updated in real-time by RoomCubit
-// whenever it receives UserJoined / UserLeft / ParticipantUpdated from the WS.
+// Seeded from the rooms list on load; updated in real-time from TWO sources:
+//   • RoomCubit — while the user is inside a room (private channel).
+//   • RoomsCountService — a session-long subscription to the PUBLIC `rooms`
+//     channel, so home/community cards update live even when not in any room.
 // Registered globally in MultiBlocProvider so home cards, community cards,
 // the detail sheet, and the live room all share one source of truth.
 
@@ -19,9 +22,16 @@ class RoomStatusState {
 }
 
 class RoomStatusCubit extends Cubit<RoomStatusState> {
-  RoomStatusCubit() : super(const RoomStatusState());
+  RoomStatusCubit() : super(const RoomStatusState()) {
+    // Subscribe to the public `rooms` channel for the whole session so counts
+    // stay live on list pages without the user having to join each room.
+    _countService.onCount = updateCount;
+    _countService.connect();
+  }
 
-  // Called by RoomCubit whenever a WS count event arrives for a specific room.
+  final RoomsCountService _countService = RoomsCountService();
+
+  // Called by RoomCubit / RoomsCountService whenever a WS count event arrives.
   void updateCount(String roomId, int count) {
     if (isClosed || roomId.isEmpty) return;
     emit(state.withCount(roomId, count));
@@ -51,5 +61,11 @@ class RoomStatusCubit extends Cubit<RoomStatusState> {
       }
       if (map.isNotEmpty) emit(state.withAll(map));
     } catch (_) {}
+  }
+
+  @override
+  Future<void> close() {
+    _countService.dispose();
+    return super.close();
   }
 }

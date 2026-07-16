@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/reports/presentation/cubit/report_cubit.dart';
 
 /// Bottom sheet for reporting a user or a specific chat message.
@@ -392,7 +393,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(
+                            child: MubtaathLoader(
                                 color: Colors.white, strokeWidth: 2.5),
                           )
                         : Text(

@@ -6,6 +6,8 @@
 //
 // Barrel re-exports ─────────────────────────────────────────────────────────
 export 'app_search_bar.dart';
+export 'kaaba_outline_icon.dart';
+export 'mubtaath_loader.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
 // All layout uses EdgeInsetsDirectional / AlignmentDirectional so widgets
@@ -20,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 
 // ─── Private colour constants ────────────────────────────────────────────────
 abstract class _C {
@@ -77,7 +80,7 @@ class CorePrimaryButton extends StatelessWidget {
                 ? const SizedBox(
                     width:  24,
                     height: 24,
-                    child:  CircularProgressIndicator(
+                    child:  MubtaathLoader(
                       color:       Colors.white,
                       strokeWidth: 2.5,
                     ),
@@ -620,7 +623,7 @@ class CoreLoadingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(
+      child: MubtaathLoader(
         color:       Color(0xFF305544),
         strokeWidth: 2.5,
       ),
@@ -774,7 +777,7 @@ class _RoomCardBg extends StatelessWidget {
           : Container(
               color: const Color(0xFF305544).withValues(alpha: 0.10),
               child: const Center(
-                child: CircularProgressIndicator(
+                child: MubtaathLoader(
                   color: Color(0xFF305544), strokeWidth: 2,
                 ),
               ),

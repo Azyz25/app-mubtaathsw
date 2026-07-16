@@ -16,13 +16,37 @@
 // The country chip in the header is tappable when multiple countries exist.
 // =============================================================================
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+
+// ── External-launch helpers (dial / WhatsApp / browser) ──────────────────────
+Future<void> _openExternal(Uri uri) async {
+  try {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    // No handler app installed — silently ignore.
+  }
+}
+
+// wa.me needs an international number with digits only (no +, spaces or dashes).
+String _waDigits(String phone) => phone.replaceAll(RegExp(r'[^0-9]'), '');
+
+// Ensure an external link carries a scheme so the browser opens it.
+Uri _normalizedUrl(String url) {
+  final u = url.trim();
+  return Uri.parse(u.startsWith('http') ? u : 'https://$u');
+}
 
 // =============================================================================
 // SECTION 1 — ICON + COLOR MAPPER
@@ -206,6 +230,8 @@ class GuideItem {
   final String  subtitleAr;
   final String  subtitleEn;
   final String? phone;
+  /// 'mobile' → also show a WhatsApp button · 'landline' → call only · null → call only.
+  final String? phoneType;
   final String? url;
 
   IconData get icon {
@@ -222,6 +248,7 @@ class GuideItem {
     required this.subtitleAr,
     required this.subtitleEn,
     this.phone,
+    this.phoneType,
     this.url,
   });
 
@@ -235,6 +262,7 @@ class GuideItem {
     subtitleAr: json['subtitleAr'] as String? ?? '',
     subtitleEn: json['subtitleEn'] as String? ?? '',
     phone:      json['phone']      as String?,
+    phoneType:  json['phoneType']  as String? ?? json['phone_type'] as String?,
     url:        json['url']        as String?,
   );
 }
@@ -244,11 +272,14 @@ class GuideItem {
 // Thin wrappers around appDio — keeps the Cubit free of HTTP details.
 // =============================================================================
 class _GuideApiService {
+  final _cache = _GuideCache();
+
   /// GET /api/directory/countries → active countries for the guide switcher.
   Future<List<CountryOption>> fetchCountries() async {
     final res  = await appDio.get('/directory/countries');
     final raw  = res.data['data'];
     final list = raw is List<dynamic> ? raw : <dynamic>[];
+    await _cache.saveCountries(list); // write-through for offline boot
     return list
         .whereType<Map<String, dynamic>>()
         .map(CountryOption.fromJson)
@@ -274,7 +305,81 @@ class _GuideApiService {
       '/directory',
       queryParameters: {'country': countryCode},
     );
-    return res.data['data'] as Map<String, dynamic>;
+    final data = res.data['data'] as Map<String, dynamic>;
+    await _cache.saveGuide(countryCode, data); // write-through for offline
+    return data;
+  }
+}
+
+// =============================================================================
+// Offline-first local cache for the student guide.
+//
+// The guide is read-mostly reference content, so it's cached to the device
+// (SharedPreferences JSON) and shown INSTANTLY on open — even with no network —
+// then refreshed in the background and written back. Keys:
+//   guide_countries       → last countries list (raw JSON)
+//   guide_last_country    → last resolved country code
+//   guide_data_<CODE>     → full guide payload for a country (raw JSON)
+// =============================================================================
+class _GuideCache {
+  static const _kCountries = 'guide_countries';
+  static const _kLastCode  = 'guide_last_country';
+  static String _guideKey(String code) => 'guide_data_${code.toUpperCase()}';
+
+  Future<void> saveGuide(String code, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_guideKey(code), jsonEncode(data));
+    } catch (_) {/* cache is best-effort */}
+  }
+
+  Future<Map<String, dynamic>?> readGuide(String code) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw   = prefs.getString(_guideKey(code));
+      if (raw == null) return null;
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveCountries(List<dynamic> raw) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kCountries, jsonEncode(raw));
+    } catch (_) {}
+  }
+
+  Future<List<CountryOption>?> readCountries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw   = prefs.getString(_kCountries);
+      if (raw == null) return null;
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(CountryOption.fromJson)
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveLastCountry(String code) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kLastCode, code);
+    } catch (_) {}
+  }
+
+  Future<String?> readLastCountry() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_kLastCode);
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -346,11 +451,26 @@ class GuideCubit extends Cubit<GuideState> {
     _init();
   }
 
-  final _api = _GuideApiService();
+  final _api   = _GuideApiService();
+  final _cache = _GuideCache();
 
   /// Boot sequence: countries → user country → load guide.
+  /// Offline-first: shows the cached countries + last-viewed guide instantly,
+  /// then refreshes from the network in the background.
   Future<void> _init() async {
     emit(state.copyWith(status: GuideStatus.loading, query: ''));
+
+    // ── Instant offline paint from cache (read-only, no network) ─────────
+    final cachedCountries = await _cache.readCountries();
+    final cachedCode      = await _cache.readLastCountry();
+    if (cachedCode != null && cachedCode.isNotEmpty) {
+      final cachedGuide = await _cache.readGuide(cachedCode);
+      if (cachedGuide != null && !isClosed) {
+        _emitGuide(cachedGuide, cachedCode, cachedCountries, cachedCode);
+      }
+    }
+
+    // ── Background network refresh ───────────────────────────────────────
     try {
       final countries = await _api.fetchCountries();
       final userCode  = await _api.fetchUserCountryCode();
@@ -361,9 +481,13 @@ class GuideCubit extends Cubit<GuideState> {
           ? userCode.toUpperCase()
           : (countries.isNotEmpty ? countries.first.code : 'GB');
 
+      await _cache.saveLastCountry(bestCode);
       await _loadCountry(bestCode, countries, bestCode);
     } catch (_) {
-      if (!isClosed) emit(state.copyWith(status: GuideStatus.error));
+      // Only surface an error if we had no cache to fall back on.
+      if (!isClosed && state.status != GuideStatus.loaded) {
+        emit(state.copyWith(status: GuideStatus.error));
+      }
     }
   }
 
@@ -372,26 +496,44 @@ class GuideCubit extends Cubit<GuideState> {
     List<CountryOption>? availableCountries,
     String? homeCode,
   ]) async {
+    // 1) Instant cache paint — the guide appears immediately, even offline.
+    final cached = await _cache.readGuide(code);
+    if (cached != null && !isClosed) {
+      _emitGuide(cached, code, availableCountries, homeCode);
+    }
+
+    // 2) Network refresh (write-through caches inside fetchGuideData).
     try {
       final data = await _api.fetchGuideData(code);
-      final cats = _parseCategories(data);
-      if (!isClosed) {
-        emit(GuideState(
-          status:                GuideStatus.loaded,
-          countries:             availableCountries ?? state.countries,
-          selectedCountryCode:   data['countryCode']   as String? ?? code,
-          selectedCountryFlag:   data['countryFlag']   as String? ?? '',
-          selectedCountryNameAr: data['countryNameAr'] as String? ?? '',
-          selectedCountryNameEn: data['countryNameEn'] as String? ?? '',
-          all:                   cats,
-          filtered:              cats,
-          tip:                   GuideTip.fromJson(data),
-          homeCountryCode:       homeCode ?? state.homeCountryCode,
-        ));
-      }
+      if (!isClosed) _emitGuide(data, code, availableCountries, homeCode);
     } catch (_) {
-      if (!isClosed) emit(state.copyWith(status: GuideStatus.error));
+      // Keep the cached view if we have one; otherwise show the error state.
+      if (cached == null && !isClosed) {
+        emit(state.copyWith(status: GuideStatus.error));
+      }
     }
+  }
+
+  /// Builds and emits a loaded GuideState from a raw guide payload.
+  void _emitGuide(
+    Map<String, dynamic> data,
+    String code,
+    List<CountryOption>? availableCountries,
+    String? homeCode,
+  ) {
+    final cats = _parseCategories(data);
+    emit(GuideState(
+      status:                GuideStatus.loaded,
+      countries:             availableCountries ?? state.countries,
+      selectedCountryCode:   data['countryCode']   as String? ?? code,
+      selectedCountryFlag:   data['countryFlag']   as String? ?? '',
+      selectedCountryNameAr: data['countryNameAr'] as String? ?? '',
+      selectedCountryNameEn: data['countryNameEn'] as String? ?? '',
+      all:                   cats,
+      filtered:              cats,
+      tip:                   GuideTip.fromJson(data),
+      homeCountryCode:       homeCode ?? state.homeCountryCode,
+    ));
   }
 
   /// Called from the country switcher sheet.
@@ -579,38 +721,67 @@ class _GuideItemRow extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Call — always available when a phone number exists.
                 if (item.phone != null)
-                  GestureDetector(
-                    onTap: () { /* TODO: url_launcher tel:${item.phone} */ },
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color:        AppColors.primary.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(LucideIcons.phone,
-                          color: AppColors.primary, size: 16),
-                    ),
+                  _GuideActionButton(
+                    icon:  LucideIcons.phone,
+                    color: AppColors.primary,
+                    onTap: () => unawaited(
+                        _openExternal(Uri(scheme: 'tel', path: item.phone!))),
                   ),
-                if (item.phone != null && item.url != null)
+                // WhatsApp — only for numbers marked as mobile in the dashboard.
+                if (item.phone != null && item.phoneType == 'mobile') ...[
                   const SizedBox(width: 8),
-                if (item.url != null)
-                  GestureDetector(
-                    onTap: () { /* TODO: url_launcher ${item.url} */ },
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color:        AppColors.secondary.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(LucideIcons.externalLink,
-                          color: AppColors.secondary, size: 16),
-                    ),
+                  _GuideActionButton(
+                    icon:  LucideIcons.messageCircle,
+                    color: AppColors.whatsapp,
+                    onTap: () => unawaited(_openExternal(
+                        Uri.parse('https://wa.me/${_waDigits(item.phone!)}'))),
                   ),
+                ],
+                // External link / location — opens in the browser.
+                if (item.url != null) ...[
+                  if (item.phone != null) const SizedBox(width: 8),
+                  _GuideActionButton(
+                    icon:  LucideIcons.externalLink,
+                    color: AppColors.secondary,
+                    onTap: () =>
+                        unawaited(_openExternal(_normalizedUrl(item.url!))),
+                  ),
+                ],
               ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ── Small rounded action button (call / WhatsApp / link) ─────────────────────
+class _GuideActionButton extends StatelessWidget {
+  final IconData     icon;
+  final Color        color;
+  final VoidCallback onTap;
+
+  const _GuideActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color:        color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(icon, color: color, size: 17),
       ),
     );
   }
@@ -912,8 +1083,12 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
 
           return SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
+            child: MubtaathRefresh(
+              onRefresh: () => cubit.reload(),
+              child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               slivers: [
 
                 // ── Header ──────────────────────────────────────────
@@ -990,7 +1165,7 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                 if (state.status == GuideStatus.loading)
                   const SliverFillRemaining(
                     child: Center(
-                      child: CircularProgressIndicator(
+                      child: MubtaathLoader(
                         color: AppColors.primary,
                         strokeWidth: 2.5,
                       ),
@@ -1186,6 +1361,7 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                   ),
                 ),
               ],
+            ),
             ),
           );
         },

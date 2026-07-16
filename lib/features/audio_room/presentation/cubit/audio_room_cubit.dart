@@ -140,6 +140,9 @@ class AudioRoomCubit extends Cubit<AudioRoomState> {
         // Volume-indication speaking state is consumed by the live room view
         // (room_details_page.dart); this lightweight cubit ignores it.
         break;
+      case AgoraMuteUpdate():
+        // Remote mute state is consumed by the live room grid; not used here.
+        break;
     }
   }
 

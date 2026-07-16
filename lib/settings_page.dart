@@ -18,6 +18,7 @@ import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/services/floating_messages_setting.dart';
 import 'package:mubtaath/core/widgets/language_picker.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
@@ -137,9 +138,81 @@ class _SettingsCard extends StatelessWidget {
 }
 
 // =============================================================================
+// SECTION 3b — FLOATING MESSAGES TOGGLE  (moved here from the room chat sheet)
+// =============================================================================
+class _FloatingMessagesToggleCard extends StatefulWidget {
+  const _FloatingMessagesToggleCard();
+
+  @override
+  State<_FloatingMessagesToggleCard> createState() =>
+      _FloatingMessagesToggleCardState();
+}
+
+class _FloatingMessagesToggleCardState
+    extends State<_FloatingMessagesToggleCard> {
+  bool _enabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    FloatingMessagesSetting.get().then((v) {
+      if (mounted) setState(() => _enabled = v);
+    });
+  }
+
+  Future<void> _toggle(bool v) async {
+    setState(() => _enabled = v);
+    await FloatingMessagesSetting.set(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 18, vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color:        AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          const Icon(LucideIcons.sparkles, color: AppColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              l10n.floatingMessages,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize:   15,
+                fontWeight: FontWeight.w700,
+                color:      AppColors.darkText,
+                height:     1.2,
+              ),
+            ),
+          ),
+          Switch(
+            value: _enabled,
+            onChanged: _toggle,
+            activeThumbColor: AppColors.white,
+            activeTrackColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
 // SECTION 4 — ABOUT APP BOTTOM SHEET
 // =============================================================================
 
+// Legacy hardcoded about sheet — kept for reference; the About entry now opens
+// the dashboard-editable /legal/about page instead.
+// ignore: unused_element
 void _showAboutSheet(BuildContext context) {
   final l10n     = AppLocalizations.of(context)!;
   final langCode = Localizations.localeOf(context).languageCode;
@@ -534,7 +607,7 @@ void _showDeleteAccountDialog(BuildContext context, SettingsCubit cubit) {
                           ? const SizedBox(
                               width:  22,
                               height: 22,
-                              child:  CircularProgressIndicator(
+                              child:  MubtaathLoader(
                                 color:       Colors.white,
                                 strokeWidth: 2.5,
                               ),
@@ -643,6 +716,11 @@ class _SettingsView extends StatelessWidget {
 
                         const SizedBox(height: 14),
 
+                        // Floating messages toggle (moved here from the room chat)
+                        const _FloatingMessagesToggleCard(),
+
+                        const SizedBox(height: 14),
+
                         // 2. Help
                         _SettingsCard(
                           icon:  LucideIcons.helpCircle,
@@ -652,11 +730,29 @@ class _SettingsView extends StatelessWidget {
 
                         const SizedBox(height: 14),
 
-                        // 3. About
+                        // 3. Terms & Conditions
+                        _SettingsCard(
+                          icon:  LucideIcons.fileText,
+                          label: l10n.termsAndConditions,
+                          onTap: () => context.push('/legal/terms'),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 4. Privacy Policy
+                        _SettingsCard(
+                          icon:  LucideIcons.shieldCheck,
+                          label: l10n.privacyPolicy,
+                          onTap: () => context.push('/legal/privacy'),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 5. About — dashboard-editable content (legal 'about').
                         _SettingsCard(
                           icon:  LucideIcons.info,
                           label: l10n.aboutApp,
-                          onTap: () => _showAboutSheet(context),
+                          onTap: () => context.push('/legal/about'),
                         ),
 
                         const Spacer(),

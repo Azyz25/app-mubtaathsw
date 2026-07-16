@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mubtaath/core/theme/theme.dart';
+import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 
 // ─────────────────────────────────────────────────────────────
 // MAIN BUTTON (Primary — filled green)
@@ -56,10 +57,9 @@ class MainButton extends StatelessWidget {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(
+                child: MubtaathLoader(
                   strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppColors.white),
+                  color: AppColors.white,
                 ),
               )
             : Row(
@@ -130,10 +130,9 @@ class SecondaryButton extends StatelessWidget {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(
+                child: MubtaathLoader(
                   strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primary),
+                  color: AppColors.primary,
                 ),
               )
             : Row(
