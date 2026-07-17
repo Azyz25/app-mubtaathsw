@@ -581,8 +581,10 @@ class _HomeBody extends StatelessWidget {
                     ),
                   ),
 
-                // Nav bar clearance
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                // Liquid-pill clearance is now reserved once, centrally, by
+                // HomePage itself (wraps every tab, not just this one) — see
+                // the Padding around AnimatedSwitcher in HomePage.build().
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
           ),
@@ -780,11 +782,11 @@ class _IOSNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Home-indicator safe area only — no extra manual gap on top of it, so the
-    // pill sits as close to the true bottom edge as iOS allows.
+    // Sits a bit below the home-indicator safe area (not flush against it,
+    // not floating far above it either).
     final bot = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 0, 18, bot + 4),
+      padding: EdgeInsets.fromLTRB(18, 0, 18, bot - 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         // iOS-26 "Liquid Glass" approximation: a real backdrop blur behind a
@@ -933,18 +935,34 @@ class HomePage extends StatelessWidget {
                       ),
                 body: Stack(
                   children: [
-                    // Animated tab switcher
-                    AnimatedSwitcher(
-                      duration:       const Duration(milliseconds: 200),
-                      switchInCurve:  Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, anim) => FadeTransition(
-                        opacity: anim,
-                        child: child,
+                    // Animated tab switcher. The floating pill is drawn in this
+                    // same Stack via Positioned rather than Scaffold's own
+                    // bottomNavigationBar slot, so — unlike a real
+                    // bottomNavigationBar — nothing reserves its footprint
+                    // automatically. Every tab body needs that space held out
+                    // for it explicitly, or its own bottom content (buttons,
+                    // last list items, ...) ends up rendered behind the pill
+                    // and effectively unreachable. Reserved centrally here so
+                    // it applies to all six tabs uniformly, current and future
+                    // — not left to each page to remember on its own.
+                    Padding(
+                      padding: EdgeInsets.only(
+                        bottom: usesLiquidPill
+                            ? MediaQuery.of(context).padding.bottom + 88
+                            : 0,
                       ),
-                      child: KeyedSubtree(
-                        key:   ValueKey(state.navIndex),
-                        child: _tabBody(state.navIndex, state),
+                      child: AnimatedSwitcher(
+                        duration:       const Duration(milliseconds: 200),
+                        switchInCurve:  Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: child,
+                        ),
+                        child: KeyedSubtree(
+                          key:   ValueKey(state.navIndex),
+                          child: _tabBody(state.navIndex, state),
+                        ),
                       ),
                     ),
                     // iOS floating pill nav

@@ -945,7 +945,7 @@ class _SettingsView extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 Expanded(
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsetsDirectional.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1006,7 +1006,14 @@ class _SettingsView extends StatelessWidget {
                           onTap: () => context.push('/legal/about'),
                         ),
 
-                        const Spacer(),
+                        // Fixed gap, not Spacer — this Column now scrolls, so
+                        // Spacer would fight an unbounded height instead of
+                        // sizing against Expanded's old bounded one (which is
+                        // what made the logout button end up stuck right
+                        // under the About card: the flex space it computed
+                        // was often only a few px once content nearly filled
+                        // the available height).
+                        const SizedBox(height: 32),
 
                         // 4. Logout
                         CoreLogoutButton(
