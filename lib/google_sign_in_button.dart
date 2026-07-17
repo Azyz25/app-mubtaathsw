@@ -104,6 +104,65 @@ class _GoogleLogo extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
+// APPLE SIGN-IN BUTTON  (iOS only — filled black, per Apple's HIG)
+// ─────────────────────────────────────────────────────────────
+
+class AppleSignInButton extends StatelessWidget {
+  const AppleSignInButton({
+    super.key,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: AppDimensions.buttonHeight,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          foregroundColor: AppColors.white,
+          backgroundColor: AppColors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(AppDimensions.radiusButton),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.base,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: MubtaathLoader(strokeWidth: 2.5, color: AppColors.white),
+              )
+            : Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Icon(Icons.apple, size: 26, color: AppColors.white),
+                  ),
+                  Text(
+                    AppLocalizations.of(context)!.signInWithApple,
+                    style: AppTextStyles.buttonMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // OR DIVIDER  ( ──────── أو ──────── )
 // ─────────────────────────────────────────────────────────────
 

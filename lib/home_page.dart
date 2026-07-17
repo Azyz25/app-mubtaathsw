@@ -42,6 +42,7 @@ import 'package:mubtaath/notifications_page.dart';
 import 'package:mubtaath/community_page.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
+import 'package:mubtaath/core/widgets/post_signup_sheets.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
@@ -154,6 +155,7 @@ class HomeState {
   final List<RoomModel> filteredRooms;
   final bool            isLoading;
   final bool            hasError;
+  final String userId;
   final String userCountryCode;
   final String userCountryNameAr;
   final String userCountryNameEn;
@@ -169,6 +171,7 @@ class HomeState {
     this.filteredRooms      = const [],
     this.isLoading          = true,
     this.hasError           = false,
+    this.userId             = '',
     this.userCountryCode    = '',
     this.userCountryNameAr  = '',
     this.userCountryNameEn  = '',
@@ -185,6 +188,7 @@ class HomeState {
     List<RoomModel>? filteredRooms,
     bool?            isLoading,
     bool?            hasError,
+    String?          userId,
     String?          userCountryCode,
     String?          userCountryNameAr,
     String?          userCountryNameEn,
@@ -200,6 +204,7 @@ class HomeState {
         filteredRooms:     filteredRooms     ?? this.filteredRooms,
         isLoading:         isLoading         ?? this.isLoading,
         hasError:          hasError          ?? this.hasError,
+        userId:            userId            ?? this.userId,
         userCountryCode:   userCountryCode   ?? this.userCountryCode,
         userCountryNameAr: userCountryNameAr ?? this.userCountryNameAr,
         userCountryNameEn: userCountryNameEn ?? this.userCountryNameEn,
@@ -237,6 +242,7 @@ class HomeCubit extends Cubit<HomeState> {
       final avatarPath = avatarUrl.isNotEmpty ? avatarUrl : getAvatarPath(avatarId);
 
       emit(state.copyWith(
+        userId:            user['id']?.toString() ?? '',
         userFirstName:     firstName,
         userAvatar:        avatarPath,
         userCountryCode:   user['countryCode']   as String? ?? '',
@@ -916,7 +922,22 @@ class HomePage extends StatelessWidget {
         // NotificationsPage without requiring inter-cubit communication.
         BlocProvider(create: (_) => NotifCubit()),
       ],
-      child: BlocBuilder<HomeCubit, HomeState>(
+      child: BlocListener<HomeCubit, HomeState>(
+        // Fires exactly once per HomePage lifetime, the moment userId first
+        // populates (async /auth/me fetch resolving) — never again after,
+        // even though HomeState keeps changing for unrelated reasons (room
+        // list refreshing, tab switches, ...).
+        listenWhen: (previous, current) =>
+            previous.userId.isEmpty && current.userId.isNotEmpty,
+        listener: (ctx, state) {
+          final extra = GoRouterState.of(ctx).extra;
+          final justRegistered =
+              extra is Map && extra['justRegistered'] == true;
+          if (justRegistered) {
+            showBioPromptSheet(ctx, userId: state.userId);
+          }
+        },
+        child: BlocBuilder<HomeCubit, HomeState>(
         builder: (ctx, state) {
           final cubit = ctx.read<HomeCubit>();
           final usesLiquidPill =
@@ -992,6 +1013,7 @@ class HomePage extends StatelessWidget {
             },
           );
         },
+      ),
       ),
     );
   }

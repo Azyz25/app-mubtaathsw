@@ -206,6 +206,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signInWithGoogle => 'Sign in with Google';
 
   @override
+  String get signInWithApple => 'Sign in with Apple';
+
+  @override
   String get iAgreeToThe => 'I agree to the ';
 
   @override
@@ -264,6 +267,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get genericError => 'An error occurred, please try again';
+
+  @override
+  String get socialAuthError => 'Couldn\'t sign you in, please try again';
+
+  @override
+  String get socialAuthTokenError =>
+      'Couldn\'t verify your account, please try again';
+
+  @override
+  String get completeYourProfile => 'Complete your profile';
+
+  @override
+  String get phoneRequiredForAccount =>
+      'We need your phone number to finish setting up your account';
+
+  @override
+  String get writeYourBio => 'Write a bio';
+
+  @override
+  String get bioPromptHint =>
+      'This shows on your profile for others to see — you can always change it later in Settings';
+
+  @override
+  String get bioPromptPlaceholder => 'Write something about yourself...';
+
+  @override
+  String get skipForNow => 'Skip for now';
+
+  @override
+  String get saveBio => 'Save';
 
   @override
   String get invalidEmailError => 'Please enter a valid email address';

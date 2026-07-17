@@ -458,6 +458,12 @@ abstract class AppLocalizations {
   /// **'تسجيل الدخول عبر قوقل'**
   String get signInWithGoogle;
 
+  /// No description provided for @signInWithApple.
+  ///
+  /// In ar, this message translates to:
+  /// **'تسجيل الدخول عبر آبل'**
+  String get signInWithApple;
+
   /// No description provided for @iAgreeToThe.
   ///
   /// In ar, this message translates to:
@@ -571,6 +577,60 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'حدث خطأ، يرجى المحاولة مجدداً'**
   String get genericError;
+
+  /// No description provided for @socialAuthError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر تسجيل الدخول، حاول مرة أخرى'**
+  String get socialAuthError;
+
+  /// No description provided for @socialAuthTokenError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر التحقق من الحساب، حاول مرة أخرى'**
+  String get socialAuthTokenError;
+
+  /// No description provided for @completeYourProfile.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكمل ملفك الشخصي'**
+  String get completeYourProfile;
+
+  /// No description provided for @phoneRequiredForAccount.
+  ///
+  /// In ar, this message translates to:
+  /// **'نحتاج رقم جوالك لإكمال إنشاء حسابك'**
+  String get phoneRequiredForAccount;
+
+  /// No description provided for @writeYourBio.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب نبذة عنك'**
+  String get writeYourBio;
+
+  /// No description provided for @bioPromptHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'هذه النبذة تظهر للآخرين في ملفك الشخصي، وتقدر تعدلها لاحقاً من الإعدادات'**
+  String get bioPromptHint;
+
+  /// No description provided for @bioPromptPlaceholder.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب شيئاً عن نفسك...'**
+  String get bioPromptPlaceholder;
+
+  /// No description provided for @skipForNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'تخطي الآن'**
+  String get skipForNow;
+
+  /// No description provided for @saveBio.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفظ'**
+  String get saveBio;
 
   /// No description provided for @invalidEmailError.
   ///

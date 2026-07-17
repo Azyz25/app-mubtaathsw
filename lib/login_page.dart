@@ -27,6 +27,7 @@
 // =============================================================================
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,9 +39,12 @@ import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/language_sync_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
+import 'package:mubtaath/core/services/social_auth_service.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/widgets/language_picker.dart';
+import 'package:mubtaath/core/widgets/post_signup_sheets.dart';
+import 'package:mubtaath/google_sign_in_button.dart' show GoogleSignInButton, AppleSignInButton;
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
 // =============================================================================
@@ -115,74 +119,6 @@ class AuthCubit extends Cubit<AuthState> {
 }
 
 // =============================================================================
-// SECTION 6 — GOOGLE SIGN-IN BUTTON
-// Outlined variant — used only on login screen
-// =============================================================================
-
-class _GoogleButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-
-  const _GoogleButton({this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.surface,
-          side: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Google logo from asset with fallback
-            Image.asset(
-              'images/google_logo.png',
-              width: 24,
-              height: 24,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 24,
-                  height: 24,
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  child: const Center(
-                    child: Text(
-                      'G',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF4285F4),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 10),
-            Text(
-              AppLocalizations.of(context)!.signInWithGoogle,
-              style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
 // SECTION 7 — OR DIVIDER WIDGET
 // =============================================================================
 
@@ -232,16 +168,61 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+bool get _isIOS =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.macOS;
+
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _socialLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // ── Google / Apple sign-in ──────────────────────────────────────────────
+  // Firebase does the OAuth dance and hands back an ID token; the backend
+  // verifies it and issues the app's own session — see SocialAuthService.
+  Future<void> _onGooglePressed() => _runSocialAuth(SocialAuthService.signInWithGoogle);
+  Future<void> _onApplePressed() => _runSocialAuth(SocialAuthService.signInWithApple);
+
+  Future<void> _runSocialAuth(Future<SocialAuthResult> Function() signIn) async {
+    if (_socialLoading) return;
+    setState(() => _socialLoading = true);
+
+    final result = await signIn();
+
+    if (!mounted) return;
+    setState(() => _socialLoading = false);
+
+    if (!result.success) {
+      if (result.errorMessage != null) {
+        final l10n = AppLocalizations.of(context)!;
+        _showErrorSnack(
+          result.errorMessage == 'socialAuthTokenError'
+              ? l10n.socialAuthTokenError
+              : result.errorMessage == 'socialAuthError'
+                  ? l10n.socialAuthError
+                  : result.errorMessage!,
+        );
+      }
+      return; // cancelled or failed — stay on the login screen
+    }
+
+    authNotifier.value = true;
+    LanguageSyncService.syncLocale(context.read<LanguageCubit>().state.languageCode);
+
+    if (result.needsPhone && result.userId != null) {
+      await showPhoneCompletionSheet(context, userId: result.userId!);
+    }
+
+    if (!mounted) return;
+    context.go('/home', extra: {'justRegistered': result.isNewUser});
   }
 
   void _onLoginPressed(AuthCubit cubit) {
@@ -471,14 +452,18 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 24),
 
-                      // ── Google Login Button ───────────────────────────
-                      _GoogleButton(
-                        onPressed: isLoading
-                            ? null
-                            : () {
-                                // TODO: Integrate Google Sign-In SDK
-                              },
+                      // ── Google / Apple Sign-In ─────────────────────────
+                      GoogleSignInButton(
+                        isLoading: _socialLoading,
+                        onPressed: isLoading || _socialLoading ? null : _onGooglePressed,
                       ),
+                      if (_isIOS) ...[
+                        const SizedBox(height: 14),
+                        AppleSignInButton(
+                          isLoading: _socialLoading,
+                          onPressed: isLoading || _socialLoading ? null : _onApplePressed,
+                        ),
+                      ],
 
                       const SizedBox(height: 40),
 

@@ -337,7 +337,11 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 LanguageSyncService.syncLocale(
                   ctx.read<LanguageCubit>().state.languageCode,
                 );
-                ctx.go('/home');
+                // Verifying the OTP is the one-time completion of account
+                // creation — this is the only place a regular-signup account
+                // ever passes through, so it's the natural "just registered"
+                // signal for the bio prompt (mirrors social-login's own flag).
+                ctx.go('/home', extra: {'justRegistered': true});
               } else if (state is OtpFailure) {
                 setState(() => _hasError = true);
                 final l10n = AppLocalizations.of(context)!;

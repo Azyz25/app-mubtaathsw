@@ -206,6 +206,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get signInWithGoogle => 'تسجيل الدخول عبر قوقل';
 
   @override
+  String get signInWithApple => 'تسجيل الدخول عبر آبل';
+
+  @override
   String get iAgreeToThe => 'أوافق على ';
 
   @override
@@ -263,6 +266,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get genericError => 'حدث خطأ، يرجى المحاولة مجدداً';
+
+  @override
+  String get socialAuthError => 'تعذّر تسجيل الدخول، حاول مرة أخرى';
+
+  @override
+  String get socialAuthTokenError => 'تعذّر التحقق من الحساب، حاول مرة أخرى';
+
+  @override
+  String get completeYourProfile => 'أكمل ملفك الشخصي';
+
+  @override
+  String get phoneRequiredForAccount => 'نحتاج رقم جوالك لإكمال إنشاء حسابك';
+
+  @override
+  String get writeYourBio => 'اكتب نبذة عنك';
+
+  @override
+  String get bioPromptHint =>
+      'هذه النبذة تظهر للآخرين في ملفك الشخصي، وتقدر تعدلها لاحقاً من الإعدادات';
+
+  @override
+  String get bioPromptPlaceholder => 'اكتب شيئاً عن نفسك...';
+
+  @override
+  String get skipForNow => 'تخطي الآن';
+
+  @override
+  String get saveBio => 'حفظ';
 
   @override
   String get invalidEmailError => 'يرجى إدخال بريد إلكتروني صحيح';
