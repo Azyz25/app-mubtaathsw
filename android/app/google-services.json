@@ -12,7 +12,20 @@
           "package_name": "com.mubtaathub.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "790654896955-54kce0j049ekf92o88qbcicb7l2tj38r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mubtaathub.app",
+            "certificate_hash": "35e831bd794092717144a8e6d2ff79f05f462aee"
+          }
+        },
+        {
+          "client_id": "790654896955-5q3aq7h7qa2iv1ddgieel8anscgiq1sd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDRsumKOMARWpdRvKiZHg9S3g-BUQVYqSs"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "790654896955-5q3aq7h7qa2iv1ddgieel8anscgiq1sd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "790654896955-hqa5t4ng6evle1npb08f2u6dugjjuc2i.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mubtaathub.app"
+              }
+            }
+          ]
         }
       }
     }

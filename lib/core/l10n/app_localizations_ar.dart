@@ -813,6 +813,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get leaveRoom => 'مغادرة الروم';
 
   @override
+  String get leaveRoomConfirmTitle => 'مغادرة الروم؟';
+
+  @override
+  String get leaveRoomConfirmBody => 'هل أنت متأكد أنك تبي تخرج من الروم؟';
+
+  @override
+  String get leaveRoomConfirmYes => 'نعم، خروج';
+
+  @override
+  String get stayInRoom => 'البقاء';
+
+  @override
   String get audioOutput => 'مخرج الصوت';
 
   @override

@@ -53,6 +53,60 @@ class _AudioRoomPageState extends State<AudioRoomPage> {
     }
   }
 
+  // Any way out of the room while connected — edge-swipe, the hardware
+  // Android back button, or the top-bar arrow — goes through this so a
+  // mid-conversation accidental exit isn't instant and irreversible.
+  Future<void> _confirmAndLeave() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          l10n.leaveRoomConfirmTitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Cairo', fontWeight: FontWeight.w800,
+            fontSize: 17, color: AppColors.deepDark,
+          ),
+        ),
+        content: Text(
+          l10n.leaveRoomConfirmBody,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Tajawal', fontSize: 14, color: AppColors.textSecondary,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(
+              l10n.stayInRoom,
+              style: const TextStyle(
+                fontFamily: 'Cairo', fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: Text(
+              l10n.leaveRoomConfirmYes,
+              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    await context.read<AudioRoomCubit>().leaveRoom();
+    if (mounted) context.pop();
+  }
+
   void _showPermissionDeniedSnack() {
     final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -81,14 +135,24 @@ class _AudioRoomPageState extends State<AudioRoomPage> {
         final cubit = context.read<AudioRoomCubit>();
         final l10n = AppLocalizations.of(context)!;
 
-        return Scaffold(
-          backgroundColor: AppColors.primary,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              _buildMainContent(context, state, cubit, l10n),
-              _buildTopBar(context, state, cubit, l10n),
-            ],
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            // Covers every way out — edge-swipe (Navigator.maybePop under
+            // the hood), the hardware Android back button, and anything
+            // else that goes through the Navigator — all in one place.
+            _confirmAndLeave();
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.primary,
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildMainContent(context, state, cubit, l10n),
+                _buildTopBar(context, state, cubit, l10n),
+              ],
+            ),
           ),
         );
       },
@@ -111,12 +175,10 @@ class _AudioRoomPageState extends State<AudioRoomPage> {
         padding: EdgeInsets.fromLTRB(16, top + 12, 16, 12),
         child: Row(
           children: [
-            // Back / leave
+            // Back / leave — same confirm-first path as edge-swipe and the
+            // hardware back button (see PopScope in build()).
             GestureDetector(
-              onTap: () async {
-                await cubit.leaveRoom();
-                if (context.mounted) context.pop();
-              },
+              onTap: _confirmAndLeave,
               child: Container(
                 width: 40,
                 height: 40,

@@ -821,6 +821,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leaveRoom => 'Leave room';
 
   @override
+  String get leaveRoomConfirmTitle => 'Leave the room?';
+
+  @override
+  String get leaveRoomConfirmBody =>
+      'Are you sure you want to leave this room?';
+
+  @override
+  String get leaveRoomConfirmYes => 'Yes, leave';
+
+  @override
+  String get stayInRoom => 'Stay';
+
+  @override
   String get audioOutput => 'Audio Output';
 
   @override

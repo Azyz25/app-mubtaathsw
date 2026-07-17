@@ -1586,6 +1586,30 @@ abstract class AppLocalizations {
   /// **'مغادرة الروم'**
   String get leaveRoom;
 
+  /// No description provided for @leaveRoomConfirmTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'مغادرة الروم؟'**
+  String get leaveRoomConfirmTitle;
+
+  /// No description provided for @leaveRoomConfirmBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت متأكد أنك تبي تخرج من الروم؟'**
+  String get leaveRoomConfirmBody;
+
+  /// No description provided for @leaveRoomConfirmYes.
+  ///
+  /// In ar, this message translates to:
+  /// **'نعم، خروج'**
+  String get leaveRoomConfirmYes;
+
+  /// No description provided for @stayInRoom.
+  ///
+  /// In ar, this message translates to:
+  /// **'البقاء'**
+  String get stayInRoom;
+
   /// No description provided for @audioOutput.
   ///
   /// In ar, this message translates to:
