@@ -31,6 +31,7 @@ import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/reverb_service.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+import 'package:mubtaath/home_page.dart' show liquidNavScrollClearance;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUTE WHITELIST
@@ -871,7 +872,9 @@ class _NotifList extends StatelessWidget {
       physics:   const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
-      padding:   const EdgeInsets.fromLTRB(_D.hPad, 0, _D.hPad, 32),
+      padding:   EdgeInsets.fromLTRB(
+        _D.hPad, 0, _D.hPad, liquidNavScrollClearance(context),
+      ),
       itemCount: flat.length,
       itemBuilder: (ctx, i) {
         final item = flat[i];

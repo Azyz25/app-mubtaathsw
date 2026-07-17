@@ -24,7 +24,7 @@ import 'package:mubtaath/core/services/floating_messages_setting.dart';
 import 'package:mubtaath/core/services/nav_style_setting.dart';
 import 'package:mubtaath/core/widgets/language_picker.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
-import 'package:mubtaath/home_page.dart' show HomeCubit;
+import 'package:mubtaath/home_page.dart' show HomeCubit, liquidNavScrollClearance;
 
 bool get _isIOS =>
     defaultTargetPlatform == TargetPlatform.iOS ||
@@ -946,7 +946,9 @@ class _SettingsView extends StatelessWidget {
 
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsetsDirectional.symmetric(horizontal: 20),
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      20, 0, 20, liquidNavScrollClearance(context),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [

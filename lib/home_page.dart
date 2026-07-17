@@ -581,10 +581,12 @@ class _HomeBody extends StatelessWidget {
                     ),
                   ),
 
-                // Liquid-pill clearance is now reserved once, centrally, by
-                // HomePage itself (wraps every tab, not just this one) — see
-                // the Padding around AnimatedSwitcher in HomePage.build().
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                // Scroll clearance so the last room card can be pulled clear
+                // of the floating liquid pill — content still extends behind
+                // the pill at rest, this just makes the tail end reachable.
+                SliverToBoxAdapter(
+                  child: SizedBox(height: liquidNavScrollClearance(context)),
+                ),
               ],
             ),
           ),
@@ -769,6 +771,21 @@ class _AndroidNav extends StatelessWidget {
   }
 }
 
+// iOS liquid-pill height — single source of truth, shared with the scroll-
+// clearance helper below so tab pages can stay in sync with it without
+// duplicating the number.
+const double kLiquidNavHeight = 66.0;
+
+/// Bottom scroll-padding a tab's own scrollable should add to its trailing
+/// edge so content sitting at the very end (a button, the last list item...)
+/// can be scrolled clear of the floating liquid pill instead of staying
+/// permanently hidden behind it. Safe to call unconditionally regardless of
+/// which nav style is active — on the classic bar, Scaffold's own
+/// bottomNavigationBar already reserves its space, so this just adds a
+/// little extra (harmless) scroll room past the natural end there.
+double liquidNavScrollClearance(BuildContext context) =>
+    kLiquidNavHeight + MediaQuery.of(context).padding.bottom + 26;
+
 class _IOSNav extends StatelessWidget {
   final int              currentIndex;
   final ValueChanged<int> onTap;
@@ -795,7 +812,7 @@ class _IOSNav extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
           child: Container(
-            height: 78,
+            height: kLiquidNavHeight,
             decoration: BoxDecoration(
               color:        AppColors.primaryDark.withValues(alpha: 0.62),
               borderRadius: BorderRadius.circular(30),
@@ -935,34 +952,27 @@ class HomePage extends StatelessWidget {
                       ),
                 body: Stack(
                   children: [
-                    // Animated tab switcher. The floating pill is drawn in this
-                    // same Stack via Positioned rather than Scaffold's own
-                    // bottomNavigationBar slot, so — unlike a real
-                    // bottomNavigationBar — nothing reserves its footprint
-                    // automatically. Every tab body needs that space held out
-                    // for it explicitly, or its own bottom content (buttons,
-                    // last list items, ...) ends up rendered behind the pill
-                    // and effectively unreachable. Reserved centrally here so
-                    // it applies to all six tabs uniformly, current and future
-                    // — not left to each page to remember on its own.
-                    Padding(
-                      padding: EdgeInsets.only(
-                        bottom: usesLiquidPill
-                            ? MediaQuery.of(context).padding.bottom + 88
-                            : 0,
+                    // Tab content deliberately extends to the true bottom of
+                    // the screen — NOT padded short of the pill — so the
+                    // pill's BackdropFilter has real, live content to blur as
+                    // it scrolls past underneath (that's the whole "liquid
+                    // glass" effect; padding the content away from it here
+                    // would leave the glass blurring empty space, which just
+                    // reads as a flat, opaque block instead of translucent).
+                    // Reachability is instead handled per-tab, as trailing
+                    // scroll padding on each tab's own scrollable — see
+                    // kLiquidNavScrollClearance.
+                    AnimatedSwitcher(
+                      duration:       const Duration(milliseconds: 200),
+                      switchInCurve:  Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: child,
                       ),
-                      child: AnimatedSwitcher(
-                        duration:       const Duration(milliseconds: 200),
-                        switchInCurve:  Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, anim) => FadeTransition(
-                          opacity: anim,
-                          child: child,
-                        ),
-                        child: KeyedSubtree(
-                          key:   ValueKey(state.navIndex),
-                          child: _tabBody(state.navIndex, state),
-                        ),
+                      child: KeyedSubtree(
+                        key:   ValueKey(state.navIndex),
+                        child: _tabBody(state.navIndex, state),
                       ),
                     ),
                     // iOS floating pill nav

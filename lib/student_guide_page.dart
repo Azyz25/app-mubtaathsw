@@ -29,6 +29,7 @@ import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+import 'package:mubtaath/home_page.dart' show liquidNavScrollClearance;
 
 // ── External-launch helpers (dial / WhatsApp / browser) ──────────────────────
 Future<void> _openExternal(Uri uri) async {
@@ -1355,10 +1356,7 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                 ],
 
                 SliverToBoxAdapter(
-                  child: SizedBox(
-                    height:
-                        MediaQuery.of(context).padding.bottom + 60,
-                  ),
+                  child: SizedBox(height: liquidNavScrollClearance(context)),
                 ),
               ],
             ),

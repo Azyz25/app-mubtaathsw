@@ -24,6 +24,7 @@ import 'package:mubtaath/core/utils/nominatim_geocoder.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+import 'package:mubtaath/home_page.dart' show liquidNavScrollClearance;
 
 // =============================================================================
 // SECTION 1 — ENUMS
@@ -1518,9 +1519,7 @@ class _PrayerTimesPageState extends State<PrayerTimesPage> {
 
                           _StaticQiblaPreview(qiblaAngle: state.qiblaAngle),
 
-                          SizedBox(
-                            height: MediaQuery.of(context).padding.bottom + 40,
-                          ),
+                          SizedBox(height: liquidNavScrollClearance(context)),
                         ],
                       ),
                     ),

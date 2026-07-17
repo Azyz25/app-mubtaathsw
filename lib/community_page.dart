@@ -27,6 +27,7 @@ import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+import 'package:mubtaath/home_page.dart' show liquidNavScrollClearance;
 
 // =============================================================================
 // SECTION 1 — COMMUNITY ROOM MODEL
@@ -543,7 +544,9 @@ const SliverToBoxAdapter(child: SizedBox(height: 24)),
   ),
 ),
               // Bottom padding so last card clears the nav bar
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: liquidNavScrollClearance(context)),
+              ),
             ],
           ),
           ),
