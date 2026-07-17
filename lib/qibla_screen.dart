@@ -55,18 +55,45 @@ class QiblaState {
 // =============================================================================
 
 class QiblaCubit extends Cubit<QiblaState> {
-  QiblaCubit() : super(const QiblaState()) {
+  QiblaCubit() : super(_seedState()) {
     _init();
   }
 
   double? _lat;
   double? _lng;
 
+  // ── Synchronous seed for the very first frame ───────────────────────────
+  // Even a fast SharedPreferences read is still `await`ed (at least one
+  // microtask tick), which is enough for the first frame to paint the
+  // loading spinner before it resolves. If Prayer Times (or an earlier
+  // Qibla visit) already warmed LocationCacheService's in-memory copy this
+  // session, start straight from `loaded` instead — no flash.
+  static QiblaState _seedState() {
+    final mem = LocationCacheService.instance.memorySync;
+    if (mem == null) return const QiblaState();
+    final angle = Qibla(Coordinates(mem.lat, mem.lng)).direction;
+    return QiblaState(
+      status:        QiblaStatus.loaded,
+      qiblaAngle:    angle,
+      locationLabel: mem.cityAr.isNotEmpty ? mem.cityAr : mem.cityEn,
+    );
+  }
+
   // ── Init: instant from cache when available, GPS only the first time ───────
   // Mirrors PrayerCubit's approach — opening the page should never block on
   // a fresh GPS fix + reverse-geocode if we already know where the device is.
   Future<void> _init() async {
     if (isClosed) return;
+
+    final mem = LocationCacheService.instance.memorySync;
+    if (mem != null) {
+      // Constructor already seeded the state from this — just track the
+      // coordinates and let the background check confirm/refresh silently.
+      _lat = mem.lat;
+      _lng = mem.lng;
+      unawaited(_refreshLocationInBackground());
+      return;
+    }
 
     final cached = await LocationCacheService.instance.read();
     if (isClosed) return;
@@ -561,6 +588,11 @@ class _LiveQiblaCompassState extends State<_LiveQiblaCompass>
   static const double _bigJumpDeg = 25;
   bool _needsCalibration = false;
 
+  // Shown once per screen visit, the moment interference is first detected —
+  // never on a compass that was accurate from the start, and never spammed
+  // again if it flips true a second time after the user already dismissed it.
+  bool _calibrationSheetShown = false;
+
   double _lerpAngle(double a, double b, double t) {
     var diff = b - a;
     while (diff > 180)  { diff -= 360; }
@@ -590,7 +622,98 @@ class _LiveQiblaCompassState extends State<_LiveQiblaCompass>
         reversals++;
       }
     }
+
+    final wasNeeded = _needsCalibration;
     _needsCalibration = reversals >= 2;
+
+    // Fire the sheet on the false→true transition only, and only once ever
+    // per visit. This runs mid-build (called from compassBuilder), so the
+    // sheet itself must wait for the frame to finish.
+    if (_needsCalibration && !wasNeeded && !_calibrationSheetShown) {
+      _calibrationSheetShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showCalibrationSheet();
+      });
+    }
+  }
+
+  void _showCalibrationSheet() {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        padding: EdgeInsets.fromLTRB(
+          24, 12, 24, MediaQuery.of(sheetCtx).padding.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color:        AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color:        AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.infinity,
+                  size: 28, color: AppColors.warning),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.compassNeedsCalibration,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Cairo', fontSize: 16,
+                fontWeight: FontWeight.w800, color: AppColors.deepDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.compassCalibrationHint,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Tajawal', fontSize: 13.5,
+                color: AppColors.textSecondary, height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(sheetCtx).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  l10n.gotIt,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo', fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -716,51 +839,6 @@ class _LiveQiblaCompassState extends State<_LiveQiblaCompass>
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _needsCalibration
-                      ? Container(
-                          key: const ValueKey('calibration-banner'),
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          width: 240,
-                          decoration: BoxDecoration(
-                            color:        AppColors.warning.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(LucideIcons.infinity,
-                                      size: 18, color: AppColors.warning),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    l10n.compassNeedsCalibration,
-                                    style: const TextStyle(
-                                      fontFamily: 'Cairo', fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.warning,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                l10n.compassCalibrationHint,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontFamily: 'Tajawal', fontSize: 12,
-                                  color: AppColors.textSecondary, height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('no-banner')),
-                ),
                 SizedBox(
                   width:  240,
                   height: 240,

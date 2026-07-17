@@ -30,7 +30,7 @@ import 'package:mubtaath/account_suspended_page.dart';
 CustomTransitionPage<void> _mubtaathPage(LocalKey key, Widget child) {
   return CustomTransitionPage<void>(
     key: key,
-    child: child,
+    child: _EdgeSwipeBack(child: child),
     transitionDuration: const Duration(milliseconds: 450),
     reverseTransitionDuration: const Duration(milliseconds: 450),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -66,6 +66,76 @@ CustomTransitionPage<void> _mubtaathPage(LocalKey key, Widget child) {
       );
     },
   );
+}
+
+// =============================================================================
+// EDGE-SWIPE-BACK — CustomTransitionPage doesn't get Cupertino's built-in
+// interactive back gesture (that only ships with CupertinoPageRoute/Page, and
+// switching to it would replace the fade+slide transition above). This adds
+// the same "swipe from the leading screen edge to go back" behaviour on top
+// of the custom transition, direction-aware so it starts from the right edge
+// in RTL (Arabic) and the left edge in LTR (English) — matching each
+// platform's own convention rather than a fixed side.
+// =============================================================================
+class _EdgeSwipeBack extends StatefulWidget {
+  final Widget child;
+  const _EdgeSwipeBack({required this.child});
+
+  @override
+  State<_EdgeSwipeBack> createState() => _EdgeSwipeBackState();
+}
+
+class _EdgeSwipeBackState extends State<_EdgeSwipeBack> {
+  static const _edgeWidth = 24.0;
+  static const _popDistanceThreshold = 60.0;
+
+  bool   _trackingFromEdge = false;
+  double _startX = 0;
+  double _cumulativeDx = 0;
+
+  // Raw pointer tracking (Listener), not a GestureDetector — this never
+  // enters the gesture arena, so it can't compete with a page's own
+  // horizontal scrollables (PageView, horizontal lists) for the drag.
+  void _onPointerDown(PointerDownEvent event, double screenWidth, bool isRtl) {
+    final x = event.position.dx;
+    final withinStartEdge =
+        isRtl ? x >= screenWidth - _edgeWidth : x <= _edgeWidth;
+    _trackingFromEdge = withinStartEdge && Navigator.of(context).canPop();
+    _startX = x;
+    _cumulativeDx = 0;
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (!_trackingFromEdge) return;
+    _cumulativeDx = event.position.dx - _startX;
+  }
+
+  void _onPointerUp(PointerUpEvent event, bool isRtl) {
+    if (!_trackingFromEdge) return;
+    _trackingFromEdge = false;
+
+    // "Back" motion is toward the trailing edge: negative dx in RTL
+    // (dragging right-to-left), positive dx in LTR (dragging left-to-right).
+    final backDistance = isRtl ? -_cumulativeDx : _cumulativeDx;
+    if (backDistance > _popDistanceThreshold) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (e) => _onPointerDown(e, screenWidth, isRtl),
+      onPointerMove: _onPointerMove,
+      onPointerUp: (e) => _onPointerUp(e, isRtl),
+      onPointerCancel: (_) => _trackingFromEdge = false,
+      child: widget.child,
+    );
+  }
 }
 
 const _protectedRoutes = {

@@ -8,6 +8,8 @@
 // GlobalWidgetsLocalizations injected in main.dart.
 // =============================================================================
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,8 +21,14 @@ import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/services/floating_messages_setting.dart';
+import 'package:mubtaath/core/services/nav_style_setting.dart';
 import 'package:mubtaath/core/widgets/language_picker.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
+import 'package:mubtaath/home_page.dart' show HomeCubit;
+
+bool get _isIOS =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.macOS;
 
 // =============================================================================
 // SECTION 1 — SETTINGS STATE
@@ -201,6 +209,242 @@ class _FloatingMessagesToggleCardState
             activeTrackColor: AppColors.primary,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// SECTION 3c — iOS NAV BAR STYLE PICKER  (iOS only)
+// =============================================================================
+
+class _IOSNavStyleCard extends StatefulWidget {
+  const _IOSNavStyleCard();
+
+  @override
+  State<_IOSNavStyleCard> createState() => _IOSNavStyleCardState();
+}
+
+class _IOSNavStyleCardState extends State<_IOSNavStyleCard> {
+  String _style = NavStyleSetting.liquid;
+
+  @override
+  void initState() {
+    super.initState();
+    NavStyleSetting.get().then((v) {
+      if (mounted) setState(() => _style = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final valueLabel =
+        _style == NavStyleSetting.classic ? l10n.navStyleClassic : l10n.navStyleLiquid;
+
+    return _SettingsCard(
+      icon:       LucideIcons.layoutTemplate,
+      label:      l10n.navBarStyle,
+      valueLabel: valueLabel,
+      onTap: () async {
+        final picked = await _showNavStylePicker(context, current: _style);
+        if (picked == null || !context.mounted) return;
+        setState(() => _style = picked);
+        context.read<HomeCubit>().setIosNavStyle(picked);
+      },
+    );
+  }
+}
+
+/// Bottom sheet with a live-style preview of both nav bar options, so the
+/// user sees exactly what each looks like before picking.
+Future<String?> _showNavStylePicker(
+  BuildContext context, {
+  required String current,
+}) {
+  final l10n = AppLocalizations.of(context)!;
+  return showModalBottomSheet<String>(
+    context:            context,
+    isScrollControlled: true,
+    backgroundColor:    Colors.transparent,
+    builder: (sheetCtx) => Container(
+      decoration: const BoxDecoration(
+        color:        AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20, 12, 20, MediaQuery.of(sheetCtx).padding.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38, height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.cardBorder,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              l10n.navBarStyle,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize:   17,
+                fontWeight: FontWeight.w800,
+                color:      AppColors.darkText,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _NavStyleOption(
+            label:    l10n.navStyleLiquid,
+            selected: current == NavStyleSetting.liquid,
+            preview:  const _NavPreviewLiquid(),
+            onTap: () => Navigator.of(sheetCtx).pop(NavStyleSetting.liquid),
+          ),
+          const SizedBox(height: 14),
+          _NavStyleOption(
+            label:    l10n.navStyleClassic,
+            selected: current == NavStyleSetting.classic,
+            preview:  const _NavPreviewClassic(),
+            onTap: () => Navigator.of(sheetCtx).pop(NavStyleSetting.classic),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _NavStyleOption extends StatelessWidget {
+  final String   label;
+  final bool     selected;
+  final Widget   preview;
+  final VoidCallback onTap;
+
+  const _NavStyleOption({
+    required this.label,
+    required this.selected,
+    required this.preview,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.cardBorder,
+            width: selected ? 1.6 : 1.2,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Mini phone-screen frame containing the style preview.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                height: 96,
+                color: AppColors.avatarBg,
+                alignment: Alignment.bottomCenter,
+                child: preview,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  selected ? LucideIcons.checkCircle2 : LucideIcons.circle,
+                  size:  18,
+                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize:   14,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? AppColors.primary : AppColors.darkText,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Static mockup of the floating "liquid glass" pill — a rounded dark-green
+// bar with a visible gap below it, matching _IOSNav's actual look.
+class _NavPreviewLiquid extends StatelessWidget {
+  const _NavPreviewLiquid();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Container(
+        height: 30,
+        decoration: BoxDecoration(
+          color:        AppColors.primaryDark.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.white.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(
+            4,
+            (i) => Container(
+              width:  5, height: 5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.white.withValues(alpha: i == 0 ? 1 : 0.45),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Static mockup of the classic flat bar — full-width, flush with the bottom,
+// rounded top corners only, matching _AndroidNav's actual look.
+class _NavPreviewClassic extends StatelessWidget {
+  const _NavPreviewClassic();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      width:  double.infinity,
+      decoration: const BoxDecoration(
+        color:        AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(
+          4,
+          (i) => Container(
+            width:  5, height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i == 0 ? AppColors.primary : AppColors.cardBorder,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -720,6 +964,13 @@ class _SettingsView extends StatelessWidget {
                         const _FloatingMessagesToggleCard(),
 
                         const SizedBox(height: 14),
+
+                        // iOS-only: switch between the floating pill and the
+                        // classic flat nav bar.
+                        if (_isIOS) ...[
+                          const _IOSNavStyleCard(),
+                          const SizedBox(height: 14),
+                        ],
 
                         // 2. Help
                         _SettingsCard(

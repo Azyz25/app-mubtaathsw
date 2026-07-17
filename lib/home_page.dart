@@ -35,6 +35,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/settings_page.dart';
+import 'package:mubtaath/core/services/nav_style_setting.dart';
 import 'package:mubtaath/prayer_times_page.dart';
 import 'package:mubtaath/student_guide_page.dart' hide AppSearchBar;
 import 'package:mubtaath/notifications_page.dart';
@@ -159,6 +160,7 @@ class HomeState {
   final String userCountryFlag;
   final String userFirstName;
   final String userAvatar;
+  final String iosNavStyle;
 
   const HomeState({
     this.navIndex           = 0,
@@ -173,6 +175,7 @@ class HomeState {
     this.userCountryFlag    = '',
     this.userFirstName      = '',
     this.userAvatar         = '',
+    this.iosNavStyle        = NavStyleSetting.liquid,
   });
 
   HomeState copyWith({
@@ -188,6 +191,7 @@ class HomeState {
     String?          userCountryFlag,
     String?          userFirstName,
     String?          userAvatar,
+    String?          iosNavStyle,
   }) =>
       HomeState(
         navIndex:          navIndex          ?? this.navIndex,
@@ -202,6 +206,7 @@ class HomeState {
         userCountryFlag:   userCountryFlag   ?? this.userCountryFlag,
         userFirstName:     userFirstName     ?? this.userFirstName,
         userAvatar:        userAvatar        ?? this.userAvatar,
+        iosNavStyle:       iosNavStyle       ?? this.iosNavStyle,
       );
 }
 
@@ -211,6 +216,14 @@ class HomeCubit extends Cubit<HomeState> {
 
   HomeCubit(this._statusCubit) : super(const HomeState()) {
     _initialize();
+    NavStyleSetting.get().then((v) {
+      if (!isClosed) emit(state.copyWith(iosNavStyle: v));
+    });
+  }
+
+  Future<void> setIosNavStyle(String style) async {
+    emit(state.copyWith(iosNavStyle: style));
+    await NavStyleSetting.set(style);
   }
 
   Future<void> _initialize() async {
@@ -767,9 +780,11 @@ class _IOSNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Home-indicator safe area only — no extra manual gap on top of it, so the
+    // pill sits as close to the true bottom edge as iOS allows.
     final bot = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 0, 18, bot + 12),
+      padding: EdgeInsets.fromLTRB(18, 0, 18, bot + 4),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         // iOS-26 "Liquid Glass" approximation: a real backdrop blur behind a
@@ -885,6 +900,8 @@ class HomePage extends StatelessWidget {
       child: BlocBuilder<HomeCubit, HomeState>(
         builder: (ctx, state) {
           final cubit = ctx.read<HomeCubit>();
+          final usesLiquidPill =
+              _isIOS && state.iosNavStyle == NavStyleSetting.liquid;
 
           return BlocSelector<NotifCubit, NotifState, int>(
             selector: (s) => s.unreadCount,
@@ -902,8 +919,12 @@ class HomePage extends StatelessWidget {
                 ),
                 child: Scaffold(
                 backgroundColor: AppColors.background,
-                // Android nav bar
-                bottomNavigationBar: _isIOS
+                // iOS defaults to the floating "liquid glass" pill, drawn inside
+                // the body Stack so content blurs through it while scrolling.
+                // If the user picked the classic style in Settings (or on
+                // Android, always), the flat bar goes through the normal
+                // bottomNavigationBar slot instead — same as before.
+                bottomNavigationBar: usesLiquidPill
                     ? null
                     : _AndroidNav(
                         currentIndex:     state.navIndex,
@@ -927,7 +948,7 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                     // iOS floating pill nav
-                    if (_isIOS)
+                    if (usesLiquidPill)
                       Positioned(
                         bottom: 0, left: 0, right: 0,
                         child: _IOSNav(

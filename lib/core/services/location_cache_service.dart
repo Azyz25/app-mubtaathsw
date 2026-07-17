@@ -38,21 +38,37 @@ class LocationCacheService {
   /// real move (new city/country) worth re-geocoding — not just GPS jitter.
   static const double significantMoveMeters = 5000;
 
+  // Same-process, synchronous copy of the last read/written value. Prayer
+  // Times and Qibla are separate pushed routes, each building a fresh Cubit
+  // on every visit — even a fast SharedPreferences read is still awaited
+  // (at least one microtask tick), which is enough for the first frame to
+  // render a loading state before it resolves. Whichever page warms this
+  // first lets the other start straight from `loaded`, no flash, no matter
+  // how many times the user re-opens the page within the same app session.
+  static CachedLocation? _memory;
+
+  /// Synchronous — use only to skip a redundant loading flash when a fresh
+  /// value is already known to be in memory. Never a substitute for read().
+  CachedLocation? get memorySync => _memory;
+
   Future<CachedLocation?> read() async {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble(_kLat);
     final lng = prefs.getDouble(_kLng);
     if (lat == null || lng == null) return null;
-    return CachedLocation(
+    final loc = CachedLocation(
       lat:     lat,
       lng:     lng,
       isoCode: prefs.getString(_kIso)    ?? 'GB',
       cityAr:  prefs.getString(_kCityAr) ?? '',
       cityEn:  prefs.getString(_kCityEn) ?? '',
     );
+    _memory = loc;
+    return loc;
   }
 
   Future<void> write(CachedLocation loc) async {
+    _memory = loc;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kLat, loc.lat);
     await prefs.setDouble(_kLng, loc.lng);

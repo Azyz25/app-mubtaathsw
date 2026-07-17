@@ -212,6 +212,12 @@ abstract class AppLocalizations {
   /// **'نتائج البحث'**
   String get searchResults;
 
+  /// No description provided for @searchHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابحث...'**
+  String get searchHint;
+
   /// No description provided for @tryDifferentSearch.
   ///
   /// In ar, this message translates to:
@@ -608,6 +614,12 @@ abstract class AppLocalizations {
   /// **'الاسم الكامل يجب أن يكون 3 أحرف على الأقل'**
   String get validFullNameMin;
 
+  /// No description provided for @validFullNameFormat.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى إدخال اسم حقيقي (الاسم الأول والأخير، بحروف فقط)'**
+  String get validFullNameFormat;
+
   /// No description provided for @validUsernameRequired.
   ///
   /// In ar, this message translates to:
@@ -620,6 +632,12 @@ abstract class AppLocalizations {
   /// **'اسم المستخدم يجب أن يكون 3 أحرف على الأقل'**
   String get validUsernameMin;
 
+  /// No description provided for @validUsernameFormat.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم المستخدم يجب أن يبدأ بحرف ويحتوي على حروف إنجليزية أو أرقام أو _ فقط'**
+  String get validUsernameFormat;
+
   /// No description provided for @validPhoneRequired.
   ///
   /// In ar, this message translates to:
@@ -629,8 +647,14 @@ abstract class AppLocalizations {
   /// No description provided for @validPhoneInvalid.
   ///
   /// In ar, this message translates to:
-  /// **'رقم الجوال غير صحيح'**
+  /// **'رقم الجوال غير صحيح لهذه الدولة'**
   String get validPhoneInvalid;
+
+  /// No description provided for @validPhoneCountryRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى اختيار رمز الدولة'**
+  String get validPhoneCountryRequired;
 
   /// No description provided for @validEmailRequired.
   ///
@@ -644,6 +668,12 @@ abstract class AppLocalizations {
   /// **'صيغة البريد الالكتروني غير صحيحة'**
   String get validEmailInvalid;
 
+  /// No description provided for @validEmailDisposable.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى استخدام بريد إلكتروني حقيقي وليس مؤقتاً'**
+  String get validEmailDisposable;
+
   /// No description provided for @validPasswordRequired.
   ///
   /// In ar, this message translates to:
@@ -655,6 +685,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'كلمة المرور يجب أن تكون 8 أحرف على الأقل'**
   String get validPasswordMin;
+
+  /// No description provided for @validPasswordWeak.
+  ///
+  /// In ar, this message translates to:
+  /// **'كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم على الأقل'**
+  String get validPasswordWeak;
 
   /// No description provided for @validConfirmPasswordRequired.
   ///
@@ -1111,6 +1147,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة'**
   String get compassCalibrationHint;
+
+  /// No description provided for @gotIt.
+  ///
+  /// In ar, this message translates to:
+  /// **'تمام'**
+  String get gotIt;
 
   /// No description provided for @degreeFromNorth.
   ///
@@ -1747,6 +1789,24 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الرسائل العائمة'**
   String get floatingMessages;
+
+  /// No description provided for @navBarStyle.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكل شريط التنقل'**
+  String get navBarStyle;
+
+  /// No description provided for @navStyleLiquid.
+  ///
+  /// In ar, this message translates to:
+  /// **'شريط عائم (زجاجي)'**
+  String get navStyleLiquid;
+
+  /// No description provided for @navStyleClassic.
+  ///
+  /// In ar, this message translates to:
+  /// **'شريط كلاسيكي'**
+  String get navStyleClassic;
 
   /// No description provided for @kickedFromRoom.
   ///

@@ -76,6 +76,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchResults => 'Search Results';
 
   @override
+  String get searchHint => 'Search...';
+
+  @override
   String get tryDifferentSearch => 'Try a different search';
 
   @override
@@ -285,16 +288,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get validFullNameMin => 'Full name must be at least 3 characters';
 
   @override
+  String get validFullNameFormat =>
+      'Please enter a real name (first and last, letters only)';
+
+  @override
   String get validUsernameRequired => 'Please enter a username';
 
   @override
   String get validUsernameMin => 'Username must be at least 3 characters';
 
   @override
+  String get validUsernameFormat =>
+      'Username must start with a letter and contain only letters, numbers, or _';
+
+  @override
   String get validPhoneRequired => 'Please enter your phone number';
 
   @override
-  String get validPhoneInvalid => 'Invalid phone number';
+  String get validPhoneInvalid => 'Invalid phone number for this country';
+
+  @override
+  String get validPhoneCountryRequired => 'Please select a country code';
 
   @override
   String get validEmailRequired => 'Please enter your email address';
@@ -303,10 +317,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get validEmailInvalid => 'Invalid email format';
 
   @override
+  String get validEmailDisposable =>
+      'Please use a real email address, not a temporary one';
+
+  @override
   String get validPasswordRequired => 'Please enter a password';
 
   @override
   String get validPasswordMin => 'Password must be at least 8 characters';
+
+  @override
+  String get validPasswordWeak =>
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number';
 
   @override
   String get validConfirmPasswordRequired => 'Please confirm your password';
@@ -553,6 +575,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get compassCalibrationHint =>
       'Move your phone in a figure-8 motion a few times to calibrate the compass';
+
+  @override
+  String get gotIt => 'Got it';
 
   @override
   String degreeFromNorth(String degree) {
@@ -894,6 +919,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get floatingMessages => 'Floating Messages';
+
+  @override
+  String get navBarStyle => 'Nav Bar Style';
+
+  @override
+  String get navStyleLiquid => 'Floating (Glass)';
+
+  @override
+  String get navStyleClassic => 'Classic Bar';
 
   @override
   String get kickedFromRoom => 'Removed from Room';

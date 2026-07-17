@@ -48,6 +48,7 @@
   },
   "featuredRooms": "أبرز الرومات الحالية",
   "searchResults": "نتائج البحث",
+  "searchHint": "ابحث...",
   "tryDifferentSearch": "جرّب بحثاً مختلفاً",
 
   "login": "تسجيل الدخول",
@@ -132,14 +133,19 @@
 
   "validFullNameRequired": "يرجى إدخال الاسم الكامل",
   "validFullNameMin": "الاسم الكامل يجب أن يكون 3 أحرف على الأقل",
+  "validFullNameFormat": "يرجى إدخال اسم حقيقي (الاسم الأول والأخير، بحروف فقط)",
   "validUsernameRequired": "يرجى إدخال اسم المستخدم",
   "validUsernameMin": "اسم المستخدم يجب أن يكون 3 أحرف على الأقل",
+  "validUsernameFormat": "اسم المستخدم يجب أن يبدأ بحرف ويحتوي على حروف إنجليزية أو أرقام أو _ فقط",
   "validPhoneRequired": "يرجى إدخال رقم الجوال",
-  "validPhoneInvalid": "رقم الجوال غير صحيح",
+  "validPhoneInvalid": "رقم الجوال غير صحيح لهذه الدولة",
+  "validPhoneCountryRequired": "يرجى اختيار رمز الدولة",
   "validEmailRequired": "يرجى إدخال البريد الالكتروني",
   "validEmailInvalid": "صيغة البريد الالكتروني غير صحيحة",
+  "validEmailDisposable": "يرجى استخدام بريد إلكتروني حقيقي وليس مؤقتاً",
   "validPasswordRequired": "يرجى إدخال كلمة المرور",
   "validPasswordMin": "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
+  "validPasswordWeak": "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم على الأقل",
   "validConfirmPasswordRequired": "يرجى تأكيد كلمة المرور",
   "validPasswordMismatch": "كلمتا المرور غير متطابقتين",
   "validTermsRequired": "يجب الموافقة على الشروط والأحكام للمتابعة",
@@ -247,6 +253,7 @@
   "calibrating": "جارٍ المعايرة...",
   "compassNeedsCalibration": "البوصلة غير مستقرة",
   "compassCalibrationHint": "حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة",
+  "gotIt": "تمام",
   "degreeFromNorth": "{degree}° من الشمال",
   "@degreeFromNorth": {
     "placeholders": {
@@ -402,6 +409,9 @@
   "tryAgain": "حاول مجدداً",
 
   "floatingMessages": "الرسائل العائمة",
+  "navBarStyle": "شكل شريط التنقل",
+  "navStyleLiquid": "شريط عائم (زجاجي)",
+  "navStyleClassic": "شريط كلاسيكي",
   "kickedFromRoom": "تمّ إخراجك من الغرفة",
   "kickedFromRoomBody": "قام المشرف بإزالتك من هذه الغرفة.",
   "tempBannedFromRoom": "حظر مؤقت",

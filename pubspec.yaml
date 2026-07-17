@@ -1,7 +1,7 @@
 name: mubtaath
 description: "A Saudi student voice-based social platform for students abroad"
 publish_to: "none"
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -71,7 +71,9 @@ dependencies:
   uuid: ^4.5.1 # Unique IDs for local entities
   timeago: ^3.7.0 # "2 minutes ago" timestamps
   country_flags: ^2.0.1 # Country flag widgets (student origin display)
+  intl_phone_field: ^3.2.0 # Registration phone: dial-code prefix + per-country validation (pure Dart, no native deps)
   url_launcher: ^6.3.0 # Open tel:, WhatsApp (wa.me), and external links
+  flutter_html: ^3.0.0 # Render dashboard-authored rich text (Terms/Privacy/About) — pure Dart, no native deps
 
   # ─── Local (prayer-time) notifications ──────────────────────
   flutter_local_notifications: ^17.2.3 # Scheduled adhan-time notifications
@@ -99,7 +101,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  generate: true
+  generate: true  # enables flutter gen-l10n via l10n.yaml
+  # agora_rtc_engine's iOS Swift Package Manager manifest doesn't expose every
+  # header its CocoaPods build does (AgoraRtcWrapper/AgoraPIPController.h is
+  # missing under SPM), breaking iOS archives. Force CocoaPods-only linking.
   config:
     enable-swift-package-manager: false
 

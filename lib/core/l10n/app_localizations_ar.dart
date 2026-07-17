@@ -76,6 +76,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchResults => 'نتائج البحث';
 
   @override
+  String get searchHint => 'ابحث...';
+
+  @override
   String get tryDifferentSearch => 'جرّب بحثاً مختلفاً';
 
   @override
@@ -283,16 +286,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get validFullNameMin => 'الاسم الكامل يجب أن يكون 3 أحرف على الأقل';
 
   @override
+  String get validFullNameFormat =>
+      'يرجى إدخال اسم حقيقي (الاسم الأول والأخير، بحروف فقط)';
+
+  @override
   String get validUsernameRequired => 'يرجى إدخال اسم المستخدم';
 
   @override
   String get validUsernameMin => 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل';
 
   @override
+  String get validUsernameFormat =>
+      'اسم المستخدم يجب أن يبدأ بحرف ويحتوي على حروف إنجليزية أو أرقام أو _ فقط';
+
+  @override
   String get validPhoneRequired => 'يرجى إدخال رقم الجوال';
 
   @override
-  String get validPhoneInvalid => 'رقم الجوال غير صحيح';
+  String get validPhoneInvalid => 'رقم الجوال غير صحيح لهذه الدولة';
+
+  @override
+  String get validPhoneCountryRequired => 'يرجى اختيار رمز الدولة';
 
   @override
   String get validEmailRequired => 'يرجى إدخال البريد الالكتروني';
@@ -301,10 +315,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get validEmailInvalid => 'صيغة البريد الالكتروني غير صحيحة';
 
   @override
+  String get validEmailDisposable =>
+      'يرجى استخدام بريد إلكتروني حقيقي وليس مؤقتاً';
+
+  @override
   String get validPasswordRequired => 'يرجى إدخال كلمة المرور';
 
   @override
   String get validPasswordMin => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+
+  @override
+  String get validPasswordWeak =>
+      'كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم على الأقل';
 
   @override
   String get validConfirmPasswordRequired => 'يرجى تأكيد كلمة المرور';
@@ -550,6 +572,9 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get compassCalibrationHint =>
       'حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة';
+
+  @override
+  String get gotIt => 'تمام';
 
   @override
   String degreeFromNorth(String degree) {
@@ -887,6 +912,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get floatingMessages => 'الرسائل العائمة';
+
+  @override
+  String get navBarStyle => 'شكل شريط التنقل';
+
+  @override
+  String get navStyleLiquid => 'شريط عائم (زجاجي)';
+
+  @override
+  String get navStyleClassic => 'شريط كلاسيكي';
 
   @override
   String get kickedFromRoom => 'تمّ إخراجك من الغرفة';

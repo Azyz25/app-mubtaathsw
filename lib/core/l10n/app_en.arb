@@ -48,6 +48,7 @@
   },
   "featuredRooms": "Featured Rooms",
   "searchResults": "Search Results",
+  "searchHint": "Search...",
   "tryDifferentSearch": "Try a different search",
 
   "login": "Login",
@@ -132,14 +133,19 @@
 
   "validFullNameRequired": "Please enter your full name",
   "validFullNameMin": "Full name must be at least 3 characters",
+  "validFullNameFormat": "Please enter a real name (first and last, letters only)",
   "validUsernameRequired": "Please enter a username",
   "validUsernameMin": "Username must be at least 3 characters",
+  "validUsernameFormat": "Username must start with a letter and contain only letters, numbers, or _",
   "validPhoneRequired": "Please enter your phone number",
-  "validPhoneInvalid": "Invalid phone number",
+  "validPhoneInvalid": "Invalid phone number for this country",
+  "validPhoneCountryRequired": "Please select a country code",
   "validEmailRequired": "Please enter your email address",
   "validEmailInvalid": "Invalid email format",
+  "validEmailDisposable": "Please use a real email address, not a temporary one",
   "validPasswordRequired": "Please enter a password",
   "validPasswordMin": "Password must be at least 8 characters",
+  "validPasswordWeak": "Password must contain at least one uppercase letter, one lowercase letter, and one number",
   "validConfirmPasswordRequired": "Please confirm your password",
   "validPasswordMismatch": "Passwords do not match",
   "validTermsRequired": "You must agree to the terms and conditions to continue",
@@ -247,6 +253,7 @@
   "calibrating": "Calibrating...",
   "compassNeedsCalibration": "Compass is unstable",
   "compassCalibrationHint": "Move your phone in a figure-8 motion a few times to calibrate the compass",
+  "gotIt": "Got it",
   "degreeFromNorth": "{degree}° from north",
   "@degreeFromNorth": {
     "placeholders": {
@@ -402,6 +409,9 @@
   "tryAgain": "Try Again",
 
   "floatingMessages": "Floating Messages",
+  "navBarStyle": "Nav Bar Style",
+  "navStyleLiquid": "Floating (Glass)",
+  "navStyleClassic": "Classic Bar",
   "kickedFromRoom": "Removed from Room",
   "kickedFromRoomBody": "A moderator has removed you from this room.",
   "tempBannedFromRoom": "Temporarily Banned",

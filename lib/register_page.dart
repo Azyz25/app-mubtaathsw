@@ -36,6 +36,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
+import 'package:intl_phone_field/countries.dart' show countries, Country;
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
@@ -86,6 +87,7 @@ class RegisterCubit extends Cubit<RegisterState> {
     required String fullName,
     required String username,
     required String phone,
+    required Country? phoneCountry,
     required String email,
     required String password,
     required String confirmPassword,
@@ -103,6 +105,7 @@ class RegisterCubit extends Cubit<RegisterState> {
       fullName: fullName,
       username: username,
       phone: phone,
+      phoneCountry: phoneCountry,
       email: email,
       password: password,
       confirmPassword: confirmPassword,
@@ -116,11 +119,14 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     emit(const RegisterLoading());
 
+    // Full E.164-style number: dial code + local digits, e.g. +966501234567.
+    final fullPhone = '+${phoneCountry!.dialCode}${phone.trim()}';
+
     try {
       await appDio.post('/auth/register', data: {
         'full_name':             fullName.trim(),
         'username':              username.trim(),
-        'phone_number':          phone.trim(),
+        'phone_number':          fullPhone,
         'email':                 email.trim(),
         'password':              password,
         'password_confirmation': confirmPassword,
@@ -151,50 +157,100 @@ class RegisterCubit extends Cubit<RegisterState> {
 // =============================================================================
 
 abstract class FormValidator {
+  // Only Arabic + Latin letters and spaces — no digits/symbols/emoji.
+  static final _nameCharsRe = RegExp(r'^[ء-ي٠-٩a-zA-Z\s]+$');
+  // First + last name: at least two non-empty space-separated words.
+  static final _twoWordsRe  = RegExp(r'^\S+\s+\S+');
+  // Same character repeated through the whole (whitespace-stripped) name,
+  // e.g. "ااااا" or "aaaaa" — catches keyboard-mashing placeholders.
+  static final _repeatedCharRe = RegExp(r'^(.)\1*$');
+
+  // Starts with a letter; letters/digits/underscore/dot after that.
+  static final _usernameRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9_.]{2,29}$');
+
+  static final _hasUpper = RegExp(r'[A-Z]');
+  static final _hasLower = RegExp(r'[a-z]');
+  static final _hasDigit = RegExp(r'[0-9]');
+
+  // Common disposable/temp-mail providers — rejected at registration so a
+  // throwaway address can't be used to farm accounts or dodge moderation.
+  static const _disposableEmailDomains = {
+    'mailinator.com', 'tempmail.com', 'temp-mail.org', '10minutemail.com',
+    'guerrillamail.com', 'guerrillamail.info', 'guerrillamail.biz',
+    'guerrillamail.de', 'sharklasers.com', 'throwawaymail.com', 'yopmail.com',
+    'trashmail.com', 'getnada.com', 'dispostable.com', 'fakeinbox.com',
+    'maildrop.cc', 'mytemp.email', 'moakt.com', 'emailondeck.com',
+    'spam4.me', 'mailnesia.com', 'mintemail.com', 'discard.email',
+    'tempinbox.com', 'burnermail.io', 'mail-temporaire.fr', '33mail.com',
+    'anonbox.net', 'inboxbear.com', 'tempmailo.com', 'temp-mail.io',
+  };
+
   /// Returns an l10n key string, or null if valid.
   static String? validateRegister({
     required String fullName,
     required String username,
     required String phone,
+    required Country? phoneCountry,
     required String email,
     required String password,
     required String confirmPassword,
     required bool acceptedTerms,
   }) {
-    if (fullName.trim().isEmpty) {
+    final name = fullName.trim();
+    if (name.isEmpty) {
       return 'validFullNameRequired';
     }
-    if (fullName.trim().length < 3) {
+    if (name.length < 3) {
       return 'validFullNameMin';
     }
-    if (fullName.trim().length > 100) {
+    if (name.length > 100) {
       return 'validFullNameMax';
     }
-    if (username.trim().isEmpty) {
+    final nameNoSpaces = name.replaceAll(RegExp(r'\s+'), '');
+    if (!_nameCharsRe.hasMatch(name) ||
+        !_twoWordsRe.hasMatch(name) ||
+        _repeatedCharRe.hasMatch(nameNoSpaces)) {
+      return 'validFullNameFormat';
+    }
+
+    final user = username.trim();
+    if (user.isEmpty) {
       return 'validUsernameRequired';
     }
-    if (username.trim().length < 3) {
+    if (user.length < 3) {
       return 'validUsernameMin';
     }
-    if (username.trim().length > 30) {
+    if (user.length > 30) {
       return 'validUsernameMax';
     }
-    if (phone.trim().isEmpty) {
+    if (!_usernameRe.hasMatch(user)) {
+      return 'validUsernameFormat';
+    }
+
+    final digits = phone.trim();
+    if (digits.isEmpty) {
       return 'validPhoneRequired';
     }
-    if (phone.trim().length < 9) {
+    if (phoneCountry == null) {
+      return 'validPhoneCountryRequired';
+    }
+    if (digits.length < phoneCountry.minLength ||
+        digits.length > phoneCountry.maxLength) {
       return 'validPhoneInvalid';
     }
-    if (phone.trim().length > 20) {
-      return 'validPhoneMax';
-    }
-    if (email.trim().isEmpty) {
+
+    final mail = email.trim();
+    if (mail.isEmpty) {
       return 'validEmailRequired';
     }
-    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
-        .hasMatch(email.trim())) {
+    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(mail)) {
       return 'validEmailInvalid';
     }
+    final domain = mail.split('@').last.toLowerCase();
+    if (_disposableEmailDomains.contains(domain)) {
+      return 'validEmailDisposable';
+    }
+
     if (password.isEmpty) {
       return 'validPasswordRequired';
     }
@@ -203,6 +259,11 @@ abstract class FormValidator {
     }
     if (password.length > 128) {
       return 'validPasswordMax';
+    }
+    if (!_hasUpper.hasMatch(password) ||
+        !_hasLower.hasMatch(password) ||
+        !_hasDigit.hasMatch(password)) {
+      return 'validPasswordWeak';
     }
     if (confirmPassword.isEmpty) {
       return 'validConfirmPasswordRequired';
@@ -250,6 +311,12 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _selectedCountryNameEn;
   String? _selectedCountryFlag;
 
+  // ── Phone dial-code country (separate from the study-destination country
+  // above) — defaults to Saudi Arabia, the app's primary audience.
+  static final Country _defaultPhoneCountry =
+      countries.firstWhere((c) => c.code == 'SA');
+  Country? _selectedPhoneCountry = _defaultPhoneCountry;
+
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -269,6 +336,7 @@ class _RegisterPageState extends State<RegisterPage> {
       fullName:        _fullNameController.text,
       username:        _usernameController.text,
       phone:           _phoneController.text,
+      phoneCountry:    _selectedPhoneCountry,
       email:           _emailController.text,
       password:        _passwordController.text,
       confirmPassword: _confirmPassController.text,
@@ -358,6 +426,126 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // Phone dial-code picker — covers ~75% of the screen, full country list
+  // with live search by name or dial code.
+  void _showPhoneCountryPicker(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final lang = Localizations.localeOf(context).languageCode;
+    showModalBottomSheet<void>(
+      context:            context,
+      backgroundColor:    AppColors.background,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.78,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        var query = '';
+        return StatefulBuilder(
+            builder: (context, setLocalState) {
+              final visible = query.trim().isEmpty
+                  ? countries
+                  : countries.where((c) {
+                      final q = query.trim().toLowerCase();
+                      return c.localizedName(lang).toLowerCase().contains(q) ||
+                          c.name.toLowerCase().contains(q) ||
+                          c.dialCode.contains(q);
+                    }).toList();
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 4),
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+                    child: Text(
+                      l10n.selectYourCountry,
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: TextField(
+                      autofocus: false,
+                      onChanged: (v) => setLocalState(() => query = v),
+                      textAlign: TextAlign.start,
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: l10n.searchHint,
+                        prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Flexible(
+                    child: ListView.builder(
+                      itemCount: visible.length,
+                      itemBuilder: (_, i) {
+                        final c = visible[i];
+                        return ListTile(
+                          onTap: () {
+                            setState(() => _selectedPhoneCountry = c);
+                            Navigator.of(sheetCtx).pop();
+                          },
+                          leading: Text(c.flag, style: const TextStyle(fontSize: 22)),
+                          title: Text(
+                            c.localizedName(lang),
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.darkText,
+                            ),
+                          ),
+                          trailing: Text(
+                            '+${c.dialCode}',
+                            style: const TextStyle(
+                              fontFamily: 'Tajawal',
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+      },
+    );
+  }
+
   void _showErrorSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -402,11 +590,17 @@ class _RegisterPageState extends State<RegisterPage> {
                   case 'validFullNameMin':
                     msg = l10n.validFullNameMin;
                     break;
+                  case 'validFullNameFormat':
+                    msg = l10n.validFullNameFormat;
+                    break;
                   case 'validUsernameRequired':
                     msg = l10n.validUsernameRequired;
                     break;
                   case 'validUsernameMin':
                     msg = l10n.validUsernameMin;
+                    break;
+                  case 'validUsernameFormat':
+                    msg = l10n.validUsernameFormat;
                     break;
                   case 'validPhoneRequired':
                     msg = l10n.validPhoneRequired;
@@ -414,17 +608,26 @@ class _RegisterPageState extends State<RegisterPage> {
                   case 'validPhoneInvalid':
                     msg = l10n.validPhoneInvalid;
                     break;
+                  case 'validPhoneCountryRequired':
+                    msg = l10n.validPhoneCountryRequired;
+                    break;
                   case 'validEmailRequired':
                     msg = l10n.validEmailRequired;
                     break;
                   case 'validEmailInvalid':
                     msg = l10n.validEmailInvalid;
                     break;
+                  case 'validEmailDisposable':
+                    msg = l10n.validEmailDisposable;
+                    break;
                   case 'validPasswordRequired':
                     msg = l10n.validPasswordRequired;
                     break;
                   case 'validPasswordMin':
                     msg = l10n.validPasswordMin;
+                    break;
+                  case 'validPasswordWeak':
+                    msg = l10n.validPasswordWeak;
                     break;
                   case 'validConfirmPasswordRequired':
                     msg = l10n.validConfirmPasswordRequired;
@@ -512,15 +715,74 @@ class _RegisterPageState extends State<RegisterPage> {
                       const SizedBox(height: 14),
 
                       // ── Field 3: Phone ────────────────────────────────
-                      CoreTextField(
-                        controller: _phoneController,
-                        hintText: l10n.phoneHint,
-                        keyboardType: TextInputType.phone,
-                        enabled: !isLoading,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(15),
-                        ],
+                      // Phone numbers read left-to-right universally (even in
+                      // RTL apps) — force LTR so the dial-code chip sits on
+                      // the true left with the digits extending to its right.
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () => _showPhoneCountryPicker(context),
+                              child: Container(
+                                height: 54,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color:        AppColors.surface,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.fieldBorder, width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _selectedPhoneCountry?.flag ?? '🏳️',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _selectedPhoneCountry != null
+                                          ? '+${_selectedPhoneCountry!.dialCode}'
+                                          : '',
+                                      style: const TextStyle(
+                                        fontFamily: 'Tajawal',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.darkText,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: AppColors.textSecondary,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: CoreTextField(
+                                controller: _phoneController,
+                                hintText: l10n.phoneHint,
+                                keyboardType: TextInputType.phone,
+                                enabled: !isLoading,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(
+                                    _selectedPhoneCountry?.maxLength ?? 15,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 14),
