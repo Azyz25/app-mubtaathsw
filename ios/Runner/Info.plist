@@ -24,6 +24,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GIDClientID</key>
+	<!-- CLIENT_ID from GoogleService-Info.plist — google_sign_in's iOS plugin
+	     reads this directly; without it, GoogleSignIn().signIn() crashes
+	     natively instead of returning a catchable Dart error. -->
+	<string>790654896955-hqa5t4ng6evle1npb08f2u6dugjjuc2i.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
