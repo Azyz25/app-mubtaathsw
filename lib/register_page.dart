@@ -41,6 +41,7 @@ import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/widgets/country_picker_sheet.dart';
+import 'package:mubtaath/core/widgets/home_country_picker_sheet.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 
 // =============================================================================
@@ -350,80 +351,15 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _showCountryPicker(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    showModalBottomSheet<void>(
-      context:            context,
-      backgroundColor:    AppColors.background,
-      isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // drag handle
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 4),
-            width: 40, height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.cardBorder,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Text(
-              l10n.fieldCountry,
-              style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-          const Divider(height: 1),
-          // Flexible + SingleChildScrollView prevents overflow when the list
-          // is taller than the available bottom sheet height.
-          Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ..._kPickerCountries.map((c) => ListTile(
-                    onTap: () {
-                      setState(() {
-                        _selectedCountryCode    = c.code;
-                        _selectedCountryNameAr  = c.nameAr;
-                        _selectedCountryNameEn  = c.nameEn;
-                        _selectedCountryFlag    = c.flag;
-                      });
-                      Navigator.of(context).pop();
-                    },
-                    leading: Text(c.flag, style: const TextStyle(fontSize: 22)),
-                    title: Text(
-                      c.nameAr,
-                      style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
-                    trailing: _selectedCountryCode == c.code
-                        ? const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
-                        : null,
-                  )),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    showHomeCountryPickerSheet(
+      context,
+      selectedCode: _selectedCountryCode,
+      onSelected: (c) => setState(() {
+        _selectedCountryCode   = c.code;
+        _selectedCountryNameAr = c.nameAr;
+        _selectedCountryNameEn = c.nameEn;
+        _selectedCountryFlag   = c.flag;
+      }),
     );
   }
 
@@ -983,21 +919,3 @@ class _TermsCheckbox extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// SECTION 9 — COUNTRY PICKER DATA
-// =============================================================================
-
-class _CountryEntry {
-  final String nameAr;
-  final String nameEn;
-  final String code;
-  final String flag;
-  const _CountryEntry(this.nameAr, this.nameEn, this.code, this.flag);
-}
-
-const _kPickerCountries = <_CountryEntry>[
-  _CountryEntry('بريطانيا',  'United Kingdom', 'GB', '🇬🇧'),
-  _CountryEntry('أستراليا',  'Australia',      'AU', '🇦🇺'),
-  _CountryEntry('أمريكا',    'United States',  'US', '🇺🇸'),
-  _CountryEntry('كندا',      'Canada',         'CA', '🇨🇦'),
-];

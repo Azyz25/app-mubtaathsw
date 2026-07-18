@@ -15,6 +15,7 @@ import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/country_picker_sheet.dart';
+import 'package:mubtaath/core/widgets/home_country_picker_sheet.dart';
 
 Future<void> showPhoneCompletionSheet(
   BuildContext context, {
@@ -49,6 +50,13 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
   bool _saving = false;
   String? _error;
 
+  // Study-destination country — separate from the phone dial code above,
+  // same distinction registration itself makes.
+  String? _selectedCountryCode;
+  String? _selectedCountryNameAr;
+  String? _selectedCountryNameEn;
+  String? _selectedCountryFlag;
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -69,6 +77,10 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
     try {
       await appDio.patch('/users/${widget.userId}', data: {
         'phone_number': '+${_selectedCountry.dialCode}$digits',
+        if (_selectedCountryCode != null) 'country_code':    _selectedCountryCode,
+        if (_selectedCountryNameAr != null) 'country_name_ar': _selectedCountryNameAr,
+        if (_selectedCountryNameEn != null) 'country_name_en': _selectedCountryNameEn,
+        if (_selectedCountryFlag != null) 'country_flag':    _selectedCountryFlag,
       });
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
@@ -186,6 +198,57 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () => showHomeCountryPickerSheet(
+                context,
+                selectedCode: _selectedCountryCode,
+                onSelected: (c) => setState(() {
+                  _selectedCountryCode   = c.code;
+                  _selectedCountryNameAr = c.nameAr;
+                  _selectedCountryNameEn = c.nameEn;
+                  _selectedCountryFlag   = c.flag;
+                }),
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+                decoration: BoxDecoration(
+                  color:        AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.fieldBorder, width: 1.2),
+                ),
+                child: Row(
+                  children: [
+                    if (_selectedCountryFlag != null) ...[
+                      Text(_selectedCountryFlag!, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      Text(
+                        _selectedCountryNameAr!,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo', fontSize: 15,
+                          fontWeight: FontWeight.w600, color: AppColors.darkText,
+                        ),
+                      ),
+                      const Spacer(),
+                    ] else ...[
+                      Expanded(
+                        child: Text(
+                          l10n.selectYourCountry,
+                          style: const TextStyle(
+                            fontFamily: 'Tajawal', fontSize: 14, color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textSecondary, size: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
             if (_error != null) ...[
