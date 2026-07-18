@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -228,44 +229,52 @@ void main() async {
     // Firebase not available — push disabled, app continues normally.
   }
 
+  runApp(const MubtaathApp());
+
+  // Deliberately NOT awaited before runApp(): permission dialogs and APNs/FCM
+  // registration are OS/network round-trips that can stall for a long time
+  // (subscribeToTopic in particular hangs if the device's APNs token hasn't
+  // registered yet) — none of that may ever gate the first frame again.
   if (firebaseReady) {
-    FirebaseMessaging.onBackgroundMessage(_onBackgroundMessage);
+    unawaited(_setupFcmMessaging());
+  }
+}
 
-    // Register the high-importance channel + local-notification plugin so
-    // foreground pushes can be shown as heads-up banners with sound.
-    await _initFcmLocalNotifications();
+Future<void> _setupFcmMessaging() async {
+  FirebaseMessaging.onBackgroundMessage(_onBackgroundMessage);
 
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  // Register the high-importance channel + local-notification plugin so
+  // foreground pushes can be shown as heads-up banners with sound.
+  await _initFcmLocalNotifications();
 
-    // The admin dashboard broadcasts push notifications via FCM TOPIC
-    // messaging (topic "all" for every user) — a topic send only reaches
-    // devices that have explicitly subscribed to it, so every install must
-    // subscribe here regardless of login state.
-    try {
-      await FirebaseMessaging.instance.subscribeToTopic('all');
-    } catch (_) {
-      // Non-fatal — retried on next launch.
-    }
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
 
-    final initial = await FirebaseMessaging.instance.getInitialMessage();
-    if (initial != null) _handleMessageNavigation(initial);
-
-    FirebaseMessaging.instance.getToken().then((t) {
-      if (t != null) _uploadFcmToken(t);
-    });
-    FirebaseMessaging.instance.onTokenRefresh.listen(_uploadFcmToken);
-    // Foreground: DISPLAY the push (Android won't auto-show it) so it's never
-    // silently swallowed. Tap-to-navigate happens from the notification tap or
-    // onMessageOpenedApp — not on arrival, so we never yank the user mid-use.
-    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageNavigation);
+  // The admin dashboard broadcasts push notifications via FCM TOPIC
+  // messaging (topic "all" for every user) — a topic send only reaches
+  // devices that have explicitly subscribed to it, so every install must
+  // subscribe here regardless of login state.
+  try {
+    await FirebaseMessaging.instance.subscribeToTopic('all');
+  } catch (_) {
+    // Non-fatal — retried on next launch.
   }
 
-  runApp(const MubtaathApp());
+  final initial = await FirebaseMessaging.instance.getInitialMessage();
+  if (initial != null) _handleMessageNavigation(initial);
+
+  FirebaseMessaging.instance.getToken().then((t) {
+    if (t != null) _uploadFcmToken(t);
+  });
+  FirebaseMessaging.instance.onTokenRefresh.listen(_uploadFcmToken);
+  // Foreground: DISPLAY the push (Android won't auto-show it) so it's never
+  // silently swallowed. Tap-to-navigate happens from the notification tap or
+  // onMessageOpenedApp — not on arrival, so we never yank the user mid-use.
+  FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+  FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageNavigation);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
