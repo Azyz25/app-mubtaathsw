@@ -2894,8 +2894,8 @@ class _ChatBubble extends StatelessWidget {
     this.onReportMessage,
   });
 
-  static const _r = Radius.circular(16);
-  static const _sharp = Radius.circular(3);
+  static const _r = Radius.circular(14);
+  static const _sharp = Radius.circular(4);
 
   @override
   Widget build(BuildContext context) {
@@ -2941,7 +2941,15 @@ class _ChatBubble extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.55),
                     width: 1.1,
                   )
-                : null,
+                // Same treatment as the support/report chat: a visible
+                // hairline border on every ordinary bubble, not just the
+                // special-cased ones.
+                : Border.all(
+                    color: isMine
+                        ? AppColors.chatBorderSelf
+                        : AppColors.chatBorderOther,
+                    width: 1,
+                  ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

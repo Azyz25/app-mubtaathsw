@@ -103,23 +103,30 @@ abstract final class AppColors {
   static const Color roomOverlay   = Color(0xCC051C16); // deepDark @ 80%
 
   // ─────────────────────────────────────────────
-  // LIVE ROOM CHAT — clean minimalist palette
+  // LIVE ROOM CHAT — soft-tinted palette (matches the support/report chat's
+  // bordered-badge look: light tinted fill + visible border, not solid).
   // ─────────────────────────────────────────────
 
-  /// Current user's bubble — brand green (white text on top)
-  static const Color chatBubbleSelf  = primary;
+  /// Current user's bubble — soft brand-green tint (primary @ 8%)
+  static const Color chatBubbleSelf  = Color(0x14305544);
 
-  /// Current user's bubble text — white, high contrast on green
-  static const Color chatTextSelf    = Color(0xFFFFFFFF);
+  /// Current user's bubble border — brand green @ 28%, always visible
+  static const Color chatBorderSelf  = Color(0x47305544);
+
+  /// Current user's bubble text — dark, readable on the light tint
+  static const Color chatTextSelf    = Color(0xFF1A1A1A);
 
   /// Other users' bubble — clean light surface
   static const Color chatBubbleOther = Color(0xFFF2F3F2);
 
+  /// Other users' bubble border — neutral hairline, always visible
+  static const Color chatBorderOther = cardBorder;
+
   /// Other users' bubble text — near-black, high contrast on light
   static const Color chatTextOther   = Color(0xFF1A1A1A);
 
-  /// Timestamp on own (green) bubble — white @ 70%
-  static const Color chatTimeSelf    = Color(0xB3FFFFFF);
+  /// Timestamp on own bubble — muted brand green, readable on the light tint
+  static const Color chatTimeSelf    = Color(0xFF5C7268);
 
   /// Timestamp on other (light) bubble — muted grey
   static const Color chatTimeOther   = Color(0xFF8A8A8A);
