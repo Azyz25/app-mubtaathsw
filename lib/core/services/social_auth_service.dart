@@ -6,12 +6,30 @@
 // token — Firebase is only ever the identity broker here, never the app's
 // session.
 
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
+
+// Apple's identityToken JWT embeds a hash of a nonce we choose; Firebase
+// checks it against the raw nonce we pass separately as replay protection.
+// Skipping this (e.g. passing authorizationCode as accessToken instead,
+// which isn't a valid substitute) makes signInWithCredential legitimately
+// reject the credential — the native Apple sheet completes fine, but the
+// Firebase exchange right after it fails.
+String _generateNonce([int length = 32]) {
+  const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+  final random = Random.secure();
+  return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+}
+
+String _sha256OfString(String input) => sha256.convert(utf8.encode(input)).toString();
 
 class SocialAuthResult {
   final bool success;
@@ -59,16 +77,18 @@ class SocialAuthService {
 
   static Future<SocialAuthResult> signInWithApple() async {
     try {
+      final rawNonce = _generateNonce();
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: _sha256OfString(rawNonce),
       );
 
       final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken:     appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
+        idToken:  appleCredential.identityToken,
+        rawNonce: rawNonce,
       );
 
       final userCred = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
