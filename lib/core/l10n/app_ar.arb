@@ -380,6 +380,13 @@
   "audioOutputEarpiece": "سماعة الأذن",
 
   "helpAndSupport": "المساعدة والدعم",
+  "contactSupport": "تواصل مع الدعم",
+  "contactSupportSubtitle": "تحتاج مساعدة قبل تسجيل الدخول؟ راسلنا وسنرد عليك عبر البريد الإلكتروني",
+  "yourEmail": "بريدك الإلكتروني",
+  "yourMessage": "رسالتك",
+  "describeYourIssue": "اكتب ما تحتاج المساعدة فيه...",
+  "sendMessage": "إرسال الرسالة",
+  "contactMessageSent": "تم إرسال رسالتك، سنتواصل معك قريباً",
   "reportUser": "الإبلاغ عن مستخدم",
   "reportMessage": "الإبلاغ عن رسالة",
   "reportCategory": "فئة البلاغ",

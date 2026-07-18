@@ -20,6 +20,7 @@ import 'package:mubtaath/qibla_screen.dart';
 import 'package:mubtaath/features/audio_room/presentation/cubit/audio_room_cubit.dart';
 import 'package:mubtaath/features/audio_room/presentation/pages/audio_room_page.dart';
 import 'package:mubtaath/features/reports/presentation/pages/support_page.dart';
+import 'package:mubtaath/features/reports/presentation/pages/public_contact_page.dart';
 import 'package:mubtaath/features/legal/presentation/pages/legal_page_screen.dart';
 import 'package:mubtaath/account_suspended_page.dart';
 
@@ -296,6 +297,15 @@ final GoRouter appRouter = GoRouter(
       name: 'support',
       pageBuilder: (context, state) =>
           _mubtaathPage(state.pageKey, const SupportPage()),
+    ),
+
+    // Contact Support without an account — Apple requires support be
+    // reachable pre-signup. Deliberately NOT in _protectedRoutes.
+    GoRoute(
+      path: '/contact-support',
+      name: 'contact-support',
+      pageBuilder: (context, state) =>
+          _mubtaathPage(state.pageKey, const PublicContactPage()),
     ),
 
     // Terms of Service / Privacy Policy — dashboard-editable content.

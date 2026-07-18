@@ -507,7 +507,28 @@ Center(
   ),
 ),
 
-const SizedBox(height: 32),
+const SizedBox(height: 20),
+
+                      // ── Contact Support (no account needed) ───────────
+                      Center(
+                        child: GestureDetector(
+                          onTap: isLoading
+                              ? null
+                              : () => context.push('/contact-support'),
+                          child: Text(
+                            l10n.contactSupport,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),

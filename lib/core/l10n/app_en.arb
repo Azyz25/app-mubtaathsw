@@ -380,6 +380,13 @@
   "audioOutputEarpiece": "Earpiece",
 
   "helpAndSupport": "Help & Support",
+  "contactSupport": "Contact Support",
+  "contactSupportSubtitle": "Need help before signing in? Message us and we'll reply by email",
+  "yourEmail": "Your email",
+  "yourMessage": "Your message",
+  "describeYourIssue": "Describe what you need help with...",
+  "sendMessage": "Send Message",
+  "contactMessageSent": "Your message has been sent, we'll get back to you soon",
   "reportUser": "Report User",
   "reportMessage": "Report Message",
   "reportCategory": "Report Category",
