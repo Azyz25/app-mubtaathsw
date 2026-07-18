@@ -1,11 +1,7 @@
 name: mubtaath
 description: "A Saudi student voice-based social platform for students abroad"
 publish_to: "none"
-<<<<<<< HEAD
 version: 1.0.0+7
-=======
-version: 1.0.0+6
->>>>>>> 1cf94dac01bfd457a808d865751d5b845e36b710
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
