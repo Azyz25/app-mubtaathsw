@@ -54,6 +54,10 @@ class SocialAuthService {
 
   static Future<SocialAuthResult> signInWithGoogle() async {
     try {
+      // google_sign_in silently re-authenticates with whichever account was
+      // used last if one is cached, so without this the account picker never
+      // reappears — signOut() clears that cache so signIn() always prompts.
+      await _googleSignIn.signOut();
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return const SocialAuthResult(success: false, cancelled: true);
 
@@ -89,9 +93,14 @@ class SocialAuthService {
         nonce: _sha256OfString(rawNonce),
       );
 
+      // idToken+rawNonce alone intermittently gets rejected by Firebase with
+      // "invalid-credential: Invalid OAuth response from apple.com" on iOS —
+      // a known firebase_auth issue. accessToken (Apple's authorizationCode,
+      // always present per the plugin's own docs) alongside them resolves it.
       final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken:  appleCredential.identityToken,
-        rawNonce: rawNonce,
+        idToken:     appleCredential.identityToken,
+        rawNonce:    rawNonce,
+        accessToken: appleCredential.authorizationCode,
       );
 
       final userCred = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
