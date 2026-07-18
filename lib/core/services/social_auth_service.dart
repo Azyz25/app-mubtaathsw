@@ -70,8 +70,11 @@ class SocialAuthService {
       }
 
       return _exchangeWithBackend(provider: 'google', idToken: idToken);
-    } catch (_) {
-      return const SocialAuthResult(success: false, errorMessage: 'socialAuthError');
+    } catch (e) {
+      // Surface the real exception instead of a generic message — this is
+      // the only visibility into what actually failed for a user who can't
+      // pull device logs themselves.
+      return SocialAuthResult(success: false, errorMessage: 'Google: $e');
     }
   }
 
@@ -113,9 +116,9 @@ class SocialAuthService {
       if (e.code == AuthorizationErrorCode.canceled) {
         return const SocialAuthResult(success: false, cancelled: true);
       }
-      return const SocialAuthResult(success: false, errorMessage: 'socialAuthError');
-    } catch (_) {
-      return const SocialAuthResult(success: false, errorMessage: 'socialAuthError');
+      return SocialAuthResult(success: false, errorMessage: 'Apple: ${e.code} ${e.message}');
+    } catch (e) {
+      return SocialAuthResult(success: false, errorMessage: 'Apple: $e');
     }
   }
 
@@ -143,7 +146,9 @@ class SocialAuthService {
       );
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;
-      return SocialAuthResult(success: false, errorMessage: msg ?? 'socialAuthError');
+      return SocialAuthResult(success: false, errorMessage: msg ?? 'Backend: ${e.message}');
+    } catch (e) {
+      return SocialAuthResult(success: false, errorMessage: 'Backend: $e');
     }
   }
 }

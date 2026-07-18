@@ -252,7 +252,9 @@ class _LoginPageState extends State<LoginPage> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
+        // Long enough to read/screenshot a full technical error message,
+        // not just a short "email or password incorrect"-style string.
+        duration: const Duration(seconds: 8),
       ),
     );
   }
