@@ -175,6 +175,8 @@
   "filterLegal": "Legal",
   "filterCultural": "Cultural",
   "noRoomsAvailable": "No rooms available",
+  "noActiveRoomsTitle": "No active rooms right now",
+  "noActiveRoomsHint": "All rooms are currently closed. Check back soon — new rooms open regularly, or start your own.",
 
   "notificationsTitle": "Notifications",
   "markAllRead": "Mark all as read",

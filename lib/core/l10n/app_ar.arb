@@ -175,6 +175,8 @@
   "filterLegal": "قانوني",
   "filterCultural": "ثقافي",
   "noRoomsAvailable": "لا توجد روم متاحة حالياً",
+  "noActiveRoomsTitle": "لا توجد غرف نشطة حالياً",
+  "noActiveRoomsHint": "جميع الغرف مغلقة الآن. تابعنا — ستُفتح غرف جديدة قريباً، أو أنشئ غرفتك.",
 
   "notificationsTitle": "الإشعارات",
   "markAllRead": "تحديد الكل مقروء",

@@ -556,13 +556,22 @@ class _HomeBody extends StatelessWidget {
                 const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
                 // ── Rooms list ────────────────────────────────────────────
-                if (rooms.isEmpty && state.searchQuery.isNotEmpty)
-                  SliverToBoxAdapter(
+                // Any empty list gets a clear message — otherwise "no active
+                // rooms" rendered as a blank gap and looked like a frozen page.
+                if (rooms.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: kPageHPad,
                       ),
-                      child: _EmptyState(query: state.searchQuery),
+                      child: state.searchQuery.isNotEmpty
+                          ? _EmptyState(query: state.searchQuery)
+                          : CoreEmptyState(
+                              icon:     LucideIcons.micOff,
+                              title:    l10n.noActiveRoomsTitle,
+                              subtitle: l10n.noActiveRoomsHint,
+                            ),
                     ),
                   )
                 else

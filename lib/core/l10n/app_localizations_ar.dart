@@ -398,6 +398,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noRoomsAvailable => 'لا توجد روم متاحة حالياً';
 
   @override
+  String get noActiveRoomsTitle => 'لا توجد غرف نشطة حالياً';
+
+  @override
+  String get noActiveRoomsHint =>
+      'جميع الغرف مغلقة الآن. تابعنا — ستُفتح غرف جديدة قريباً، أو أنشئ غرفتك.';
+
+  @override
   String get notificationsTitle => 'الإشعارات';
 
   @override
@@ -835,6 +842,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get helpAndSupport => 'المساعدة والدعم';
+
+  @override
+  String get contactSupport => 'تواصل مع الدعم';
+
+  @override
+  String get contactSupportSubtitle =>
+      'تحتاج مساعدة قبل تسجيل الدخول؟ راسلنا وسنرد عليك عبر البريد الإلكتروني';
+
+  @override
+  String get yourEmail => 'بريدك الإلكتروني';
+
+  @override
+  String get yourMessage => 'رسالتك';
+
+  @override
+  String get describeYourIssue => 'اكتب ما تحتاج المساعدة فيه...';
+
+  @override
+  String get sendMessage => 'إرسال الرسالة';
+
+  @override
+  String get contactMessageSent => 'تم إرسال رسالتك، سنتواصل معك قريباً';
 
   @override
   String get reportUser => 'الإبلاغ عن مستخدم';

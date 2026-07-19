@@ -507,13 +507,21 @@ const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 )
               else if (state.filteredRooms.isEmpty)
                 SliverFillRemaining(
-                  child: CoreEmptyState(
-                    icon:     LucideIcons.searchX,
-                    title:    l10n.noResults,
-                    subtitle: state.searchQuery.isNotEmpty
-                        ? l10n.noResultsFor(state.searchQuery)
-                        : l10n.noRoomsAvailable,
-                  ),
+                  // Two very different empty cases — keep them visually
+                  // distinct so an empty list never reads as a frozen screen:
+                  //  • a search that matched nothing, vs
+                  //  • genuinely no active rooms right now (all closed).
+                  child: state.searchQuery.isNotEmpty
+                      ? CoreEmptyState(
+                          icon:     LucideIcons.searchX,
+                          title:    l10n.noResults,
+                          subtitle: l10n.noResultsFor(state.searchQuery),
+                        )
+                      : CoreEmptyState(
+                          icon:     LucideIcons.micOff,
+                          title:    l10n.noActiveRoomsTitle,
+                          subtitle: l10n.noActiveRoomsHint,
+                        ),
                 )
               else
            SliverPadding(

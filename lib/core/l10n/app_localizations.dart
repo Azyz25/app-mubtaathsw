@@ -824,6 +824,18 @@ abstract class AppLocalizations {
   /// **'لا توجد روم متاحة حالياً'**
   String get noRoomsAvailable;
 
+  /// No description provided for @noActiveRoomsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد غرف نشطة حالياً'**
+  String get noActiveRoomsTitle;
+
+  /// No description provided for @noActiveRoomsHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'جميع الغرف مغلقة الآن. تابعنا — ستُفتح غرف جديدة قريباً، أو أنشئ غرفتك.'**
+  String get noActiveRoomsHint;
+
   /// No description provided for @notificationsTitle.
   ///
   /// In ar, this message translates to:
@@ -1633,6 +1645,48 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'المساعدة والدعم'**
   String get helpAndSupport;
+
+  /// No description provided for @contactSupport.
+  ///
+  /// In ar, this message translates to:
+  /// **'تواصل مع الدعم'**
+  String get contactSupport;
+
+  /// No description provided for @contactSupportSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحتاج مساعدة قبل تسجيل الدخول؟ راسلنا وسنرد عليك عبر البريد الإلكتروني'**
+  String get contactSupportSubtitle;
+
+  /// No description provided for @yourEmail.
+  ///
+  /// In ar, this message translates to:
+  /// **'بريدك الإلكتروني'**
+  String get yourEmail;
+
+  /// No description provided for @yourMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسالتك'**
+  String get yourMessage;
+
+  /// No description provided for @describeYourIssue.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب ما تحتاج المساعدة فيه...'**
+  String get describeYourIssue;
+
+  /// No description provided for @sendMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال الرسالة'**
+  String get sendMessage;
+
+  /// No description provided for @contactMessageSent.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال رسالتك، سنتواصل معك قريباً'**
+  String get contactMessageSent;
 
   /// No description provided for @reportUser.
   ///

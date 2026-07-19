@@ -403,6 +403,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRoomsAvailable => 'No rooms available';
 
   @override
+  String get noActiveRoomsTitle => 'No active rooms right now';
+
+  @override
+  String get noActiveRoomsHint =>
+      'All rooms are currently closed. Check back soon — new rooms open regularly, or start your own.';
+
+  @override
   String get notificationsTitle => 'Notifications';
 
   @override
@@ -844,6 +851,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get helpAndSupport => 'Help & Support';
+
+  @override
+  String get contactSupport => 'Contact Support';
+
+  @override
+  String get contactSupportSubtitle =>
+      'Need help before signing in? Message us and we\'ll reply by email';
+
+  @override
+  String get yourEmail => 'Your email';
+
+  @override
+  String get yourMessage => 'Your message';
+
+  @override
+  String get describeYourIssue => 'Describe what you need help with...';
+
+  @override
+  String get sendMessage => 'Send Message';
+
+  @override
+  String get contactMessageSent =>
+      'Your message has been sent, we\'ll get back to you soon';
 
   @override
   String get reportUser => 'Report User';
