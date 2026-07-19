@@ -1,6 +1,11 @@
-﻿import 'package:dio/dio.dart';
+﻿import 'dart:convert';
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
+import 'package:mubtaath/core/services/api_trust_roots.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 
 // BASE_URL is injected at compile time via --dart-define=BASE_URL=...
@@ -44,6 +49,27 @@ Dio createDioClient() {
       },
     ),
   );
+
+  // ── TLS pinning (production only) ─────────────────────────────────────────
+  // Give the production client a trust store containing ONLY the roots the real
+  // API certificate chains to (ISRG Root X1/X2 — see api_trust_roots.dart). A
+  // man-in-the-middle using a rogue/corporate/malware CA is rejected: its chain
+  // doesn't terminate at those roots, so validation fails and the request never
+  // leaves the device. Skipped for --dart-define BASE_URL dev overrides so a
+  // local http / self-signed dev server still works.
+  if (_definedUrl.isEmpty) {
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final context = SecurityContext(withTrustedRoots: false);
+        try {
+          context.setTrustedCertificatesBytes(utf8.encode(kApiTrustRootsPem));
+        } catch (_) {
+          // Certs already present on a reused context — safe to ignore.
+        }
+        return HttpClient(context: context);
+      },
+    );
+  }
 
   // Auth interceptor — injects Bearer token from SecureStorage on every request.
   // On 401 it clears the stored token so the app re-routes to login.
