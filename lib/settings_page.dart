@@ -11,9 +11,11 @@
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mubtaath/main.dart' show PushDiagnostics;
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
@@ -565,9 +567,15 @@ void _showAboutSheet(BuildContext context) {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _AboutInfoRow(
-                      label: l10n.appVersion,
-                      value: '1.0.1',
+                    GestureDetector(
+                      // Long-press reveals the push-registration diagnostic —
+                      // used to inspect iOS APNs/FCM failures on-device.
+                      onLongPress: () => _showPushDiagnostics(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: _AboutInfoRow(
+                        label: l10n.appVersion,
+                        value: '1.0.0+19',
+                      ),
                     ),
                     const Divider(color: AppColors.cardBorder, height: 1),
                     _AboutInfoRow(
@@ -582,6 +590,41 @@ void _showAboutSheet(BuildContext context) {
           ],
         ),
       ),
+    ),
+  );
+}
+
+// Diagnostic dialog for the push-registration flow (long-press app version).
+// Shows Firebase/APNs/FCM status so an iOS push failure can be read on-device.
+void _showPushDiagnostics(BuildContext context) {
+  final text = PushDiagnostics.summary();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppColors.white,
+      title: const Text(
+        'Push diagnostics',
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 16),
+      ),
+      content: SelectableText(
+        text,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.6),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              const SnackBar(content: Text('Copied')),
+            );
+          },
+          child: const Text('Copy'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     ),
   );
 }
