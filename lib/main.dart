@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -247,29 +248,54 @@ Future<void> _setupFcmMessaging() async {
   // foreground pushes can be shown as heads-up banners with sound.
   await _initFcmLocalNotifications();
 
-  await FirebaseMessaging.instance.requestPermission(
+  final messaging = FirebaseMessaging.instance;
+
+  await messaging.requestPermission(
     alert: true,
     badge: true,
     sound: true,
   );
+
+  // ── iOS: wait for the APNs token before touching FCM ────────────────────
+  // On Apple platforms FCM cannot mint a token OR subscribe to a topic until
+  // the device has registered with APNs and an APNs token is available. If
+  // getToken()/subscribeToTopic() run before that (common on a cold launch),
+  // they silently no-op — the device never actually subscribes to the "all"
+  // topic and never registers a token, so backend pushes never arrive. Local
+  // (prayer) notifications don't need APNs, which is why only THOSE worked.
+  // Poll briefly for the APNs token, and show foreground pushes natively.
+  final isApple = defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+  if (isApple) {
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    for (var i = 0; i < 10; i++) {
+      final apnsToken = await messaging.getAPNSToken();
+      if (apnsToken != null) break;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+  }
 
   // The admin dashboard broadcasts push notifications via FCM TOPIC
   // messaging (topic "all" for every user) — a topic send only reaches
   // devices that have explicitly subscribed to it, so every install must
   // subscribe here regardless of login state.
   try {
-    await FirebaseMessaging.instance.subscribeToTopic('all');
+    await messaging.subscribeToTopic('all');
   } catch (_) {
     // Non-fatal — retried on next launch.
   }
 
-  final initial = await FirebaseMessaging.instance.getInitialMessage();
+  final initial = await messaging.getInitialMessage();
   if (initial != null) _handleMessageNavigation(initial);
 
-  FirebaseMessaging.instance.getToken().then((t) {
-    if (t != null) _uploadFcmToken(t);
-  });
-  FirebaseMessaging.instance.onTokenRefresh.listen(_uploadFcmToken);
+  final token = await messaging.getToken();
+  if (token != null) _uploadFcmToken(token);
+
+  messaging.onTokenRefresh.listen(_uploadFcmToken);
   // Foreground: DISPLAY the push (Android won't auto-show it) so it's never
   // silently swallowed. Tap-to-navigate happens from the notification tap or
   // onMessageOpenedApp — not on arrival, so we never yank the user mid-use.
