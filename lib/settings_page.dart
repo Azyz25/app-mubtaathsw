@@ -574,7 +574,7 @@ void _showAboutSheet(BuildContext context) {
                       behavior: HitTestBehavior.opaque,
                       child: _AboutInfoRow(
                         label: l10n.appVersion,
-                        value: '1.0.0+19',
+                        value: '1.0.0+20',
                       ),
                     ),
                     const Divider(color: AppColors.cardBorder, height: 1),
@@ -1049,6 +1049,16 @@ class _SettingsView extends StatelessWidget {
                           icon:  LucideIcons.info,
                           label: l10n.aboutApp,
                           onTap: () => context.push('/legal/about'),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // TEMP — push-notification diagnostic (iOS APNs debug).
+                        // Remove once notifications are confirmed working.
+                        _SettingsCard(
+                          icon:  LucideIcons.bell,
+                          label: 'تشخيص الإشعارات',
+                          onTap: () => _showPushDiagnostics(context),
                         ),
 
                         // Fixed gap, not Spacer — this Column now scrolls, so
