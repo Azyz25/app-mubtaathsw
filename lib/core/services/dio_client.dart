@@ -6,6 +6,7 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/services/api_trust_roots.dart';
+import 'package:mubtaath/core/services/log_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 
 // BASE_URL is injected at compile time via --dart-define=BASE_URL=...
@@ -102,6 +103,21 @@ Dio createDioClient() {
             suspendedNotifier.value = true;
             authNotifier.value = false;
           }
+        }
+
+        // Report real server-side failures (5xx) to the dashboard as 'error'.
+        // Excludes the /logs endpoint itself (no report→fail→report loop) and
+        // skips network/timeout errors (status null) which are usually just
+        // connectivity, not app bugs worth triaging.
+        final path = error.requestOptions.path;
+        if (status != null && status >= 500 && !path.contains('/logs')) {
+          LogService.instance.report(
+            level:         'error',
+            message:       'API $status $path',
+            exceptionType: 'DioException(${error.type.name})',
+            stackTrace:    error.response?.data?.toString(),
+            route:         path,
+          );
         }
         return handler.next(error);
       },

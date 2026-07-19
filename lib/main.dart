@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +14,7 @@ import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
+import 'package:mubtaath/core/services/log_service.dart';
 import 'package:mubtaath/core/theme/theme.dart';
 import 'package:mubtaath/router.dart';
 import 'package:mubtaath/splash_cubit.dart';
@@ -249,6 +251,30 @@ Future<void> _uploadFcmToken(String token) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Global uncaught-error capture → dashboard logs (fatal) ──────────────
+  // FlutterError.onError covers framework/build errors; PlatformDispatcher
+  // covers uncaught async errors. Reporting is best-effort and silent in
+  // debug (see LogService) so it never affects the running app.
+  final priorFlutterOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    priorFlutterOnError?.call(details); // keep default (debug console) behaviour
+    LogService.instance.report(
+      level:         'fatal',
+      message:       details.exceptionAsString(),
+      exceptionType: details.exception.runtimeType.toString(),
+      stackTrace:    details.stack?.toString(),
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    LogService.instance.report(
+      level:         'fatal',
+      message:       error.toString(),
+      exceptionType: error.runtimeType.toString(),
+      stackTrace:    stack.toString(),
+    );
+    return true; // reported — don't let it bubble to the default crash handler
+  };
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

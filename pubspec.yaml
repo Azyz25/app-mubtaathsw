@@ -1,7 +1,7 @@
 name: mubtaath
 description: "A Saudi student voice-based social platform for students abroad"
 publish_to: "none"
-version: 1.0.0+22
+version: 1.0.0+23
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -61,6 +61,8 @@ dependencies:
   # ─── Permissions & Device ───────────────────────────────────
   permission_handler: ^11.3.1 # Microphone, notification permissions
   just_audio: ^0.9.40 # Audio playback
+  device_info_plus: ^10.1.0 # device model / OS for crash reports
+  package_info_plus: ^8.0.0 # app version for crash reports
 
   # ─── Localization (ar / en — RTL/LTR) ──────────────────────────
   intl: ^0.20.2 # Pinned by flutter_localizations SDK; date/number formatting + ARB plurals
