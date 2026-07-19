@@ -217,8 +217,15 @@ class _LoginPageState extends State<LoginPage> {
     authNotifier.value = true;
     LanguageSyncService.syncLocale(context.read<LanguageCubit>().state.languageCode);
 
-    if (result.needsPhone && result.userId != null) {
-      await showPhoneCompletionSheet(context, userId: result.userId!);
+    // Profile completion is a ONE-TIME, first-signup step — only a brand-new
+    // account sees it. A returning user is never nagged to "complete" their
+    // phone/country again, even if they left a field empty.
+    if (result.isNewUser && result.needsPhone && result.userId != null) {
+      await showPhoneCompletionSheet(
+        context,
+        userId:      result.userId!,
+        initialName: result.fullName,
+      );
     }
 
     if (!mounted) return;

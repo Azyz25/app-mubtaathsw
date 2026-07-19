@@ -37,6 +37,7 @@ class SocialAuthResult {
   final bool isNewUser;
   final bool needsPhone;
   final String? userId;
+  final String? fullName; // current display name — pre-fills the completion sheet
   final String? errorMessage;
 
   const SocialAuthResult({
@@ -45,6 +46,7 @@ class SocialAuthResult {
     this.isNewUser    = false,
     this.needsPhone   = false,
     this.userId,
+    this.fullName,
     this.errorMessage,
   });
 }
@@ -152,6 +154,7 @@ class SocialAuthService {
         isNewUser:  data['isNewUser']  as bool? ?? false,
         needsPhone: data['needsPhone'] as bool? ?? false,
         userId:     user?['id']?.toString(),
+        fullName:   (user?['full_name'] ?? user?['fullName'] ?? user?['name']) as String?,
       );
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;

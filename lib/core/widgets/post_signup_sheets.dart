@@ -20,6 +20,7 @@ import 'package:mubtaath/core/widgets/home_country_picker_sheet.dart';
 Future<void> showPhoneCompletionSheet(
   BuildContext context, {
   required String userId,
+  String? initialName,
 }) {
   return showModalBottomSheet<void>(
     context:            context,
@@ -30,13 +31,15 @@ Future<void> showPhoneCompletionSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (sheetCtx) => _PhoneCompletionSheet(userId: userId),
+    builder: (sheetCtx) =>
+        _PhoneCompletionSheet(userId: userId, initialName: initialName),
   );
 }
 
 class _PhoneCompletionSheet extends StatefulWidget {
-  const _PhoneCompletionSheet({required this.userId});
+  const _PhoneCompletionSheet({required this.userId, this.initialName});
   final String userId;
+  final String? initialName;
 
   @override
   State<_PhoneCompletionSheet> createState() => _PhoneCompletionSheetState();
@@ -46,9 +49,16 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
   static final Country _defaultCountry =
       countries.firstWhere((c) => c.code == 'SA');
   Country _selectedCountry = _defaultCountry;
+  final _nameController  = TextEditingController();
   final _phoneController = TextEditingController();
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.initialName?.trim() ?? '';
+  }
 
   // Study-destination country — separate from the phone dial code above,
   // same distinction registration itself makes.
@@ -59,12 +69,18 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
+    final name = _nameController.text.trim();
+    if (name.length < 3) {
+      setState(() => _error = l10n.validFullNameRequired);
+      return;
+    }
     final digits = _phoneController.text.trim();
     final min = _selectedCountry.minLength;
     final max = _selectedCountry.maxLength;
@@ -76,6 +92,7 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
     setState(() { _saving = true; _error = null; });
     try {
       await appDio.patch('/users/${widget.userId}', data: {
+        'full_name':    name,
         'phone_number': '+${_selectedCountry.dialCode}$digits',
         if (_selectedCountryCode != null) 'country_code':    _selectedCountryCode,
         if (_selectedCountryNameAr != null) 'country_name_ar': _selectedCountryNameAr,
@@ -131,6 +148,40 @@ class _PhoneCompletionSheetState extends State<_PhoneCompletionSheet> {
               ),
             ),
             const SizedBox(height: 20),
+            // Name — pre-filled from the provider, editable.
+            SizedBox(
+              height: 54,
+              child: TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.next,
+                style: const TextStyle(fontFamily: 'Cairo', fontSize: 15),
+                maxLength: 60,
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: l10n.fullName,
+                  hintStyle: const TextStyle(
+                    fontFamily: 'Tajawal', fontSize: 14, color: AppColors.textSecondary,
+                  ),
+                  prefixIcon: const Icon(Icons.person_outline, size: 20, color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Directionality(
               textDirection: TextDirection.ltr,
               child: Row(
