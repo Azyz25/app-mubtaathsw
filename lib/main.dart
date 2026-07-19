@@ -155,6 +155,22 @@ void _handleMessageNavigation(RemoteMessage message) {
   _routeFromNotificationData(message.data);
 }
 
+// The `actionTarget` in a push payload is server-supplied, so it's never
+// pushed as a raw route path. A 'page' target must be one of these known
+// static routes; a 'room' target must look like a real room id (UUID).
+// Anything else is dropped (the notification still shows, it just doesn't
+// deep-link on tap) — a malformed/hostile payload can't navigate the app
+// to an arbitrary or crafted route.
+const _pushAllowedPageRoutes = <String>{
+  '/home', '/notifications', '/student-guide', '/profile',
+  '/prayer-times', '/qibla', '/support', '/settings',
+};
+
+// Strict UUID shape — no nested quantifiers, so no ReDoS risk.
+final _roomIdPattern = RegExp(
+  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);
+
 // Shared by both tap paths: FCM's native system-tray tap (RemoteMessage.data,
 // background/terminated) and flutter_local_notifications' tap on a push we
 // rendered ourselves while the app was foregrounded (JSON-decoded payload —
@@ -165,10 +181,17 @@ void _handleMessageNavigation(RemoteMessage message) {
 void _routeFromNotificationData(Map<String, dynamic> data) {
   final actionType   = data['actionType'] as String?;
   final actionTarget = data['actionTarget'] as String?;
-  if ((actionType == 'page' || actionType == 'room') &&
+
+  if (actionType == 'room' &&
       actionTarget != null &&
-      actionTarget.isNotEmpty) {
-    appRouter.push(actionType == 'room' ? '/room/$actionTarget' : actionTarget);
+      _roomIdPattern.hasMatch(actionTarget)) {
+    appRouter.push('/room/$actionTarget');
+    return;
+  }
+  if (actionType == 'page' &&
+      actionTarget != null &&
+      _pushAllowedPageRoutes.contains(actionTarget)) {
+    appRouter.push(actionTarget);
     return;
   }
   _routeByType(data['type'] as String?);

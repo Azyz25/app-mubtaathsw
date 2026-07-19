@@ -23,7 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:mubtaath/core/services/safe_url_launcher.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
@@ -32,13 +32,9 @@ import 'package:mubtaath/core/widgets/shared_widgets.dart';
 import 'package:mubtaath/home_page.dart' show liquidNavScrollClearance;
 
 // ── External-launch helpers (dial / WhatsApp / browser) ──────────────────────
-Future<void> _openExternal(Uri uri) async {
-  try {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } catch (_) {
-    // No handler app installed — silently ignore.
-  }
-}
+// Routes through the shared scheme allowlist (https / mailto / tel only) so a
+// hostile directory link can't invoke an arbitrary OS handler.
+Future<void> _openExternal(Uri uri) => launchExternalUri(uri);
 
 // wa.me needs an international number with digits only (no +, spaces or dashes).
 String _waDigits(String phone) => phone.replaceAll(RegExp(r'[^0-9]'), '');

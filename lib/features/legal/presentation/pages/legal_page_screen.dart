@@ -10,23 +10,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/services/safe_url_launcher.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 import 'package:mubtaath/features/legal/presentation/cubit/legal_page_cubit.dart';
-
-// Content is dashboard-authored rich HTML (bold/size, images, links) — the
-// admin's WYSIWYG editor is the only thing that ever writes it, and its
-// output is sanitized server-side before it reaches here.
-Future<void> _openLink(String url) async {
-  final normalized = url.trim().startsWith('http') ? url.trim() : 'https://${url.trim()}';
-  try {
-    await launchUrl(Uri.parse(normalized), mode: LaunchMode.externalApplication);
-  } catch (_) {
-    // No handler app installed — silently ignore.
-  }
-}
 
 class LegalPageScreen extends StatelessWidget {
   final String slug; // 'terms' | 'privacy'
@@ -153,7 +141,7 @@ class _LegalPageView extends StatelessWidget {
               ),
             },
             onLinkTap: (url, attributes, element) {
-              if (url != null && url.isNotEmpty) _openLink(url);
+              if (url != null && url.isNotEmpty) launchExternalUrl(url);
             },
           ),
         );

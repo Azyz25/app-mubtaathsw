@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/services/safe_url_launcher.dart' show sanitizeImageUrl;
 import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 
 // ─── Private colour constants ────────────────────────────────────────────────
@@ -347,9 +348,11 @@ class CoreUserAvatar extends StatelessWidget {
   });
 
   ImageProvider? get _image {
-    if (imageUrl == null) return null;
-    if (imageUrl!.startsWith('assets/')) return AssetImage(imageUrl!);
-    return NetworkImage(imageUrl!);
+    // Only https URLs / asset paths — non-https falls back to no image.
+    final safe = sanitizeImageUrl(imageUrl);
+    if (safe == null) return null;
+    if (safe.startsWith('assets/')) return AssetImage(safe);
+    return NetworkImage(safe);
   }
 
   @override
@@ -945,19 +948,24 @@ class CoreAvatar extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(isPremium ? 2.0 : 1.0), // مسافة جمالية داخل الإطار
         child: ClipOval(
-          child: imageUrl != null && imageUrl!.isNotEmpty
-              ? imageUrl!.startsWith('assets/')
-                  ? Image.asset(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildInitials(primaryColor),
-                    )
-                  : Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildInitials(primaryColor),
-                    )
-              : _buildInitials(primaryColor),
+          // Only https URLs / asset paths are loaded — non-https falls back to
+          // initials (the OS also blocks cleartext http platform-wide).
+          child: () {
+            final safe = sanitizeImageUrl(imageUrl);
+            if (safe == null) return _buildInitials(primaryColor);
+            if (safe.startsWith('assets/')) {
+              return Image.asset(
+                safe,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildInitials(primaryColor),
+              );
+            }
+            return Image.network(
+              safe,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildInitials(primaryColor),
+            );
+          }(),
         ),
       ),
     );
