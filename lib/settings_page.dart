@@ -883,7 +883,7 @@ class _SettingsView extends StatelessWidget {
                         // Remove once notifications are confirmed working.
                         _SettingsCard(
                           icon:  LucideIcons.bell,
-                          label: 'تشخيص الإشعارات',
+                          label: l10n.pushDiagnosticsLabel,
                           onTap: () => _showPushDiagnostics(context),
                         ),
 

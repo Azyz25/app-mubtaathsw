@@ -1478,6 +1478,204 @@ abstract class AppLocalizations {
   /// **'كلمة المرور الحالية غير صحيحة'**
   String get currentPasswordIncorrect;
 
+  /// No description provided for @viewDetails.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض التفاصيل'**
+  String get viewDetails;
+
+  /// No description provided for @guideLoadError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر تحميل الدليل'**
+  String get guideLoadError;
+
+  /// No description provided for @checkYourConnection.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحقق من الاتصال بالإنترنت'**
+  String get checkYourConnection;
+
+  /// No description provided for @pushDiagnosticsLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'تشخيص الإشعارات'**
+  String get pushDiagnosticsLabel;
+
+  /// No description provided for @accountSuspendedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إيقاف حسابك'**
+  String get accountSuspendedTitle;
+
+  /// No description provided for @accountSuspendedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'حسابك موقوف حالياً بسبب انتهاك سياسة المنصة.\nإذا كنت تعتقد أن هذا خطأ، يُرجى التواصل مع فريق الدعم.'**
+  String get accountSuspendedBody;
+
+  /// No description provided for @joiningRoomMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري الانضمام للغرفة، يرجى الانتظار...'**
+  String get joiningRoomMessage;
+
+  /// No description provided for @messageDeletedByAdmin.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حذف هذه الرسالة بواسطة الإدارة'**
+  String get messageDeletedByAdmin;
+
+  /// No description provided for @chatMutedByAdmin.
+  ///
+  /// In ar, this message translates to:
+  /// **'لقد تم حظرك من الكتابة في الشات بواسطة الإدارة'**
+  String get chatMutedByAdmin;
+
+  /// No description provided for @messageContainsBadWords.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسالتك تحتوي على كلمات غير لائقة. يُرجى تعديلها.'**
+  String get messageContainsBadWords;
+
+  /// No description provided for @deleteMessageError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حذف الرسالة'**
+  String get deleteMessageError;
+
+  /// No description provided for @userChatMuted.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حظر المستخدم من الكتابة في الشات'**
+  String get userChatMuted;
+
+  /// No description provided for @muteChatError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حظر المستخدم من الشات'**
+  String get muteChatError;
+
+  /// No description provided for @userTempKicked.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم طرد المستخدم مؤقتاً من الغرفة'**
+  String get userTempKicked;
+
+  /// No description provided for @tempKickError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر طرد المستخدم مؤقتاً'**
+  String get tempKickError;
+
+  /// No description provided for @userGlobalBanned.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حظر المستخدم من كل الرومات'**
+  String get userGlobalBanned;
+
+  /// No description provided for @globalBanError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حظر المستخدم'**
+  String get globalBanError;
+
+  /// No description provided for @adminToolsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدوات الإدارة'**
+  String get adminToolsTitle;
+
+  /// No description provided for @muteFromChatAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'بلك من الشات'**
+  String get muteFromChatAction;
+
+  /// No description provided for @tempKickAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'طرد مؤقت'**
+  String get tempKickAction;
+
+  /// No description provided for @globalBanAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'حظر من كل الرومات'**
+  String get globalBanAction;
+
+  /// No description provided for @tempKickDurationLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مدة الطرد المؤقت'**
+  String get tempKickDurationLabel;
+
+  /// No description provided for @minuteSuffix.
+  ///
+  /// In ar, this message translates to:
+  /// **'دقيقة'**
+  String get minuteSuffix;
+
+  /// No description provided for @confirmBanTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد الحظر'**
+  String get confirmBanTitle;
+
+  /// No description provided for @confirmBanBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم منع المستخدم من دخول كل الرومات الصوتية.'**
+  String get confirmBanBody;
+
+  /// No description provided for @banAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'حظر'**
+  String get banAction;
+
+  /// No description provided for @roomClosedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إغلاق الغرفة'**
+  String get roomClosedTitle;
+
+  /// No description provided for @roomClosedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إغلاق هذه الغرفة بواسطة الإدارة.'**
+  String get roomClosedBody;
+
+  /// No description provided for @bannedFromAllRoomsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حظرك من كل الرومات'**
+  String get bannedFromAllRoomsTitle;
+
+  /// No description provided for @bannedFromAllRoomsBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حظر حسابك من دخول الرومات الصوتية بواسطة الإدارة.'**
+  String get bannedFromAllRoomsBody;
+
+  /// No description provided for @typeYourReply.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب ردك...'**
+  String get typeYourReply;
+
+  /// No description provided for @waitingForSupportReply.
+  ///
+  /// In ar, this message translates to:
+  /// **'في انتظار رد فريق الدعم'**
+  String get waitingForSupportReply;
+
+  /// No description provided for @ticketLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'التذكرة: {status}'**
+  String ticketLabel(String status);
+
   /// No description provided for @speakerRole.
   ///
   /// In ar, this message translates to:

@@ -753,6 +753,111 @@ class AppLocalizationsAr extends AppLocalizations {
   String get currentPasswordIncorrect => 'كلمة المرور الحالية غير صحيحة';
 
   @override
+  String get viewDetails => 'عرض التفاصيل';
+
+  @override
+  String get guideLoadError => 'تعذّر تحميل الدليل';
+
+  @override
+  String get checkYourConnection => 'تحقق من الاتصال بالإنترنت';
+
+  @override
+  String get pushDiagnosticsLabel => 'تشخيص الإشعارات';
+
+  @override
+  String get accountSuspendedTitle => 'تم إيقاف حسابك';
+
+  @override
+  String get accountSuspendedBody =>
+      'حسابك موقوف حالياً بسبب انتهاك سياسة المنصة.\nإذا كنت تعتقد أن هذا خطأ، يُرجى التواصل مع فريق الدعم.';
+
+  @override
+  String get joiningRoomMessage => 'جاري الانضمام للغرفة، يرجى الانتظار...';
+
+  @override
+  String get messageDeletedByAdmin => 'تم حذف هذه الرسالة بواسطة الإدارة';
+
+  @override
+  String get chatMutedByAdmin =>
+      'لقد تم حظرك من الكتابة في الشات بواسطة الإدارة';
+
+  @override
+  String get messageContainsBadWords =>
+      'رسالتك تحتوي على كلمات غير لائقة. يُرجى تعديلها.';
+
+  @override
+  String get deleteMessageError => 'تعذر حذف الرسالة';
+
+  @override
+  String get userChatMuted => 'تم حظر المستخدم من الكتابة في الشات';
+
+  @override
+  String get muteChatError => 'تعذر حظر المستخدم من الشات';
+
+  @override
+  String get userTempKicked => 'تم طرد المستخدم مؤقتاً من الغرفة';
+
+  @override
+  String get tempKickError => 'تعذر طرد المستخدم مؤقتاً';
+
+  @override
+  String get userGlobalBanned => 'تم حظر المستخدم من كل الرومات';
+
+  @override
+  String get globalBanError => 'تعذر حظر المستخدم';
+
+  @override
+  String get adminToolsTitle => 'أدوات الإدارة';
+
+  @override
+  String get muteFromChatAction => 'بلك من الشات';
+
+  @override
+  String get tempKickAction => 'طرد مؤقت';
+
+  @override
+  String get globalBanAction => 'حظر من كل الرومات';
+
+  @override
+  String get tempKickDurationLabel => 'مدة الطرد المؤقت';
+
+  @override
+  String get minuteSuffix => 'دقيقة';
+
+  @override
+  String get confirmBanTitle => 'تأكيد الحظر';
+
+  @override
+  String get confirmBanBody => 'سيتم منع المستخدم من دخول كل الرومات الصوتية.';
+
+  @override
+  String get banAction => 'حظر';
+
+  @override
+  String get roomClosedTitle => 'تم إغلاق الغرفة';
+
+  @override
+  String get roomClosedBody => 'تم إغلاق هذه الغرفة بواسطة الإدارة.';
+
+  @override
+  String get bannedFromAllRoomsTitle => 'تم حظرك من كل الرومات';
+
+  @override
+  String get bannedFromAllRoomsBody =>
+      'تم حظر حسابك من دخول الرومات الصوتية بواسطة الإدارة.';
+
+  @override
+  String get typeYourReply => 'اكتب ردك...';
+
+  @override
+  String get waitingForSupportReply => 'في انتظار رد فريق الدعم';
+
+  @override
+  String ticketLabel(String status) {
+    return 'التذكرة: $status';
+  }
+
+  @override
   String get speakerRole => 'متحدث';
 
   @override

@@ -1192,18 +1192,18 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                           Icon(LucideIcons.wifiOff, size: 48,
                               color: AppColors.primary.withValues(alpha: 0.3)),
                           const SizedBox(height: 16),
-                          const Text(
-                            'تعذّر تحميل الدليل',
-                            style: TextStyle(
+                          Text(
+                            l10n.guideLoadError,
+                            style: const TextStyle(
                               fontFamily: 'Cairo', fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: AppColors.darkText,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'تحقق من الاتصال بالإنترنت',
-                            style: TextStyle(
+                          Text(
+                            l10n.checkYourConnection,
+                            style: const TextStyle(
                               fontFamily: 'Tajawal', fontSize: 13,
                               color: AppColors.textSecondary,
                             ),
@@ -1218,9 +1218,9 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                                 color: AppColors.primary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text(
-                                'إعادة المحاولة',
-                                style: TextStyle(
+                              child: Text(
+                                l10n.tryAgain,
+                                style: const TextStyle(
                                   fontFamily: 'Cairo', fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,

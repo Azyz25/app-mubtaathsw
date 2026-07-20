@@ -760,6 +760,111 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentPasswordIncorrect => 'Current password is incorrect';
 
   @override
+  String get viewDetails => 'View details';
+
+  @override
+  String get guideLoadError => 'Couldn\'t load the guide';
+
+  @override
+  String get checkYourConnection => 'Check your internet connection';
+
+  @override
+  String get pushDiagnosticsLabel => 'Notification diagnostics';
+
+  @override
+  String get accountSuspendedTitle => 'Your account is suspended';
+
+  @override
+  String get accountSuspendedBody =>
+      'Your account is currently suspended for violating platform policy.\nIf you believe this is a mistake, please contact support.';
+
+  @override
+  String get joiningRoomMessage => 'Joining the room, please wait...';
+
+  @override
+  String get messageDeletedByAdmin => 'This message was deleted by an admin';
+
+  @override
+  String get chatMutedByAdmin => 'You\'ve been muted from chatting by an admin';
+
+  @override
+  String get messageContainsBadWords =>
+      'Your message contains inappropriate words. Please edit it.';
+
+  @override
+  String get deleteMessageError => 'Couldn\'t delete the message';
+
+  @override
+  String get userChatMuted => 'User muted from chat';
+
+  @override
+  String get muteChatError => 'Couldn\'t mute the user from chat';
+
+  @override
+  String get userTempKicked => 'User temporarily kicked from the room';
+
+  @override
+  String get tempKickError => 'Couldn\'t temporarily kick the user';
+
+  @override
+  String get userGlobalBanned => 'User banned from all rooms';
+
+  @override
+  String get globalBanError => 'Couldn\'t ban the user';
+
+  @override
+  String get adminToolsTitle => 'Admin tools';
+
+  @override
+  String get muteFromChatAction => 'Mute from chat';
+
+  @override
+  String get tempKickAction => 'Temporary kick';
+
+  @override
+  String get globalBanAction => 'Ban from all rooms';
+
+  @override
+  String get tempKickDurationLabel => 'Kick duration';
+
+  @override
+  String get minuteSuffix => 'minute';
+
+  @override
+  String get confirmBanTitle => 'Confirm ban';
+
+  @override
+  String get confirmBanBody =>
+      'This will block the user from joining any voice room.';
+
+  @override
+  String get banAction => 'Ban';
+
+  @override
+  String get roomClosedTitle => 'The room was closed';
+
+  @override
+  String get roomClosedBody => 'This room was closed by an admin.';
+
+  @override
+  String get bannedFromAllRoomsTitle => 'You\'ve been banned from all rooms';
+
+  @override
+  String get bannedFromAllRoomsBody =>
+      'Your account was banned from joining voice rooms by an admin.';
+
+  @override
+  String get typeYourReply => 'Type your reply...';
+
+  @override
+  String get waitingForSupportReply => 'Waiting for a reply from support';
+
+  @override
+  String ticketLabel(String status) {
+    return 'Ticket: $status';
+  }
+
+  @override
   String get speakerRole => 'Speaker';
 
   @override

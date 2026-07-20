@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
+import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 
@@ -10,6 +11,7 @@ class AccountSuspendedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -36,10 +38,10 @@ class AccountSuspendedPage extends StatelessWidget {
 
               const SizedBox(height: 28),
 
-              const Text(
-                'تم إيقاف حسابك',
+              Text(
+                l10n.accountSuspendedTitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -49,11 +51,10 @@ class AccountSuspendedPage extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              const Text(
-                'حسابك موقوف حالياً بسبب انتهاك سياسة المنصة.\n'
-                'إذا كنت تعتقد أن هذا خطأ، يُرجى التواصل مع فريق الدعم.',
+              Text(
+                l10n.accountSuspendedBody,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Tajawal',
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -68,9 +69,9 @@ class AccountSuspendedPage extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => context.go('/support'),
                   icon: const Icon(LucideIcons.messageCircle, size: 16),
-                  label: const Text(
-                    'التواصل مع الدعم',
-                    style: TextStyle(
+                  label: Text(
+                    l10n.contactSupport,
+                    style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -98,9 +99,9 @@ class AccountSuspendedPage extends StatelessWidget {
                     authNotifier.value = false;
                     if (context.mounted) context.go('/login');
                   },
-                  child: const Text(
-                    'تسجيل الخروج',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.logout,
+                    style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

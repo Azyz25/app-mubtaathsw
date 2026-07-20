@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/utils/supported_countries.dart';
 
 class HomeCountryEntry {
   final String nameAr;
@@ -77,7 +78,10 @@ void showHomeCountryPickerSheet(
                   },
                   leading: Text(c.flag, style: const TextStyle(fontSize: 22)),
                   title: Text(
-                    c.nameAr,
+                    countryDisplayName(
+                      c.code, Localizations.localeOf(sheetCtx).languageCode,
+                      ar: c.nameAr, en: c.nameEn,
+                    ),
                     style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 14,

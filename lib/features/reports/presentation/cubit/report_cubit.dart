@@ -22,9 +22,13 @@ class ReportCubit extends Cubit<ReportState> {
       });
       emit(state.copyWith(status: ReportStatus.success));
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ??
-          'تعذر إرسال البلاغ، يرجى المحاولة مجدداً';
-      emit(state.copyWith(status: ReportStatus.failure, errorMessage: msg));
+      // No hardcoded fallback here — leaving errorMessage null lets the UI's
+      // own `?? l10n.reportSentError` show a properly localized message when
+      // the backend gives no text of its own.
+      emit(state.copyWith(
+        status: ReportStatus.failure,
+        errorMessage: e.response?.data?['message'] as String?,
+      ));
     }
   }
 
@@ -47,9 +51,10 @@ class ReportCubit extends Cubit<ReportState> {
       });
       emit(state.copyWith(status: ReportStatus.success));
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ??
-          'تعذر إرسال البلاغ، يرجى المحاولة مجدداً';
-      emit(state.copyWith(status: ReportStatus.failure, errorMessage: msg));
+      emit(state.copyWith(
+        status: ReportStatus.failure,
+        errorMessage: e.response?.data?['message'] as String?,
+      ));
     }
   }
 
@@ -72,9 +77,10 @@ class ReportCubit extends Cubit<ReportState> {
       });
       emit(state.copyWith(status: ReportStatus.success));
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ??
-          'تعذر إرسال البلاغ، يرجى المحاولة مجدداً';
-      emit(state.copyWith(status: ReportStatus.failure, errorMessage: msg));
+      emit(state.copyWith(
+        status: ReportStatus.failure,
+        errorMessage: e.response?.data?['message'] as String?,
+      ));
     }
   }
 
@@ -106,8 +112,10 @@ class ReportCubit extends Cubit<ReportState> {
       await appDio.post('/user/reports/$reportId/reply', data: {'message': message});
       emit(state.copyWith(replyStatus: ReplyStatus.success));
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ?? 'تعذر إرسال الرد';
-      emit(state.copyWith(replyStatus: ReplyStatus.failure, replyError: msg));
+      emit(state.copyWith(
+        replyStatus: ReplyStatus.failure,
+        replyError: e.response?.data?['message'] as String?,
+      ));
     }
   }
 

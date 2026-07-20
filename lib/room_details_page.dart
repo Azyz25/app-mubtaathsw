@@ -45,10 +45,34 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mubtaath/core/services/agora_service.dart';
 
-const _joiningRoomMessage = 'جاري الانضمام للغرفة، يرجى الانتظار...';
-const _adminDeletedMessageText = 'تم حذف هذه الرسالة بواسطة الإدارة';
-const _chatMutedByAdminMessage =
-    'لقد تم حظرك من الكتابة في الشات بواسطة الإدارة';
+// Sentinel keys stored in Cubit state (which has no BuildContext / l10n
+// access). Resolved to a localized string at the one or two display sites via
+// [_resolveNotice] — anything that ISN'T one of these keys is assumed to be a
+// real server-sent message and shown as-is.
+const _kChatMutedByAdmin  = '_kChatMutedByAdmin';
+const _kBadWordsRejected  = '_kBadWordsRejected';
+const _kDeleteMessageErr  = '_kDeleteMessageErr';
+const _kUserChatMuted     = '_kUserChatMuted';
+const _kMuteChatErr       = '_kMuteChatErr';
+const _kUserTempKicked    = '_kUserTempKicked';
+const _kTempKickErr       = '_kTempKickErr';
+const _kUserGlobalBanned  = '_kUserGlobalBanned';
+const _kGlobalBanErr      = '_kGlobalBanErr';
+
+String _resolveNotice(String raw, AppLocalizations l10n) {
+  switch (raw) {
+    case _kChatMutedByAdmin: return l10n.chatMutedByAdmin;
+    case _kBadWordsRejected: return l10n.messageContainsBadWords;
+    case _kDeleteMessageErr: return l10n.deleteMessageError;
+    case _kUserChatMuted:    return l10n.userChatMuted;
+    case _kMuteChatErr:      return l10n.muteChatError;
+    case _kUserTempKicked:   return l10n.userTempKicked;
+    case _kTempKickErr:      return l10n.tempKickError;
+    case _kUserGlobalBanned: return l10n.userGlobalBanned;
+    case _kGlobalBanErr:     return l10n.globalBanError;
+    default:                 return raw;
+  }
+}
 
 /// Renders an avatar from either a bundled asset path (`assets/...`) or a remote
 /// URL, falling back to [fallback] on an empty path or any load error.
@@ -278,9 +302,9 @@ class ChatMessage {
       senderRole: (j['isAdminMessage'] as bool? ?? false)
           ? 'admin'
           : (j['role'] as String? ?? 'user'),
-      text: isDeleted
-          ? _adminDeletedMessageText
-          : (j['message'] as String? ?? ''),
+      // isDeleted drives the display label at render time — this raw text is
+      // never shown when isDeleted is true, so it doesn't need a placeholder.
+      text: isDeleted ? '' : (j['message'] as String? ?? ''),
       sentAt: DateTime.tryParse(j['sentAt'] as String? ?? '') ?? DateTime.now(),
       isDeleted: isDeleted,
     );
@@ -825,7 +849,7 @@ class RoomCubit extends Cubit<RoomState> {
         emit(state.copyWith(
           isChatMuted: true,
           chatNoticeMessage:
-              data['message'] as String? ?? _chatMutedByAdminMessage,
+              data['message'] as String? ?? _kChatMutedByAdmin,
         ));
 
       // ── Moderation: user kick ──────────────────────────────────────────────
@@ -1071,7 +1095,7 @@ class RoomCubit extends Cubit<RoomState> {
     final updated = state.messages.map((m) {
       if (m.id != messageId) return m;
       return m.copyWith(
-        text: _adminDeletedMessageText,
+        text: '',
         isDeleted: true,
         isSending: false,
       );
@@ -1408,7 +1432,7 @@ class RoomCubit extends Cubit<RoomState> {
     final trimmed = text.trim();
     if (trimmed.isEmpty || trimmed.length > 500) return;
     if (state.isChatMuted) {
-      emit(state.copyWith(chatNoticeMessage: _chatMutedByAdminMessage));
+      emit(state.copyWith(chatNoticeMessage: _kChatMutedByAdmin));
       return;
     }
 
@@ -1450,7 +1474,7 @@ class RoomCubit extends Cubit<RoomState> {
           emit(state.copyWith(
             isChatMuted: true,
             chatNoticeMessage:
-                data['message'] as String? ?? _chatMutedByAdminMessage,
+                data['message'] as String? ?? _kChatMutedByAdmin,
           ));
         }
       } else if (e is DioException && e.response?.statusCode == 422) {
@@ -1460,8 +1484,7 @@ class RoomCubit extends Cubit<RoomState> {
         final code = data is Map<String, dynamic> ? data['code'] : null;
         if (code == 'banned_word') {
           emit(state.copyWith(
-            chatNoticeMessage: data['message'] as String? ??
-                'رسالتك تحتوي على كلمات غير لائقة. يُرجى تعديلها.',
+            chatNoticeMessage: data['message'] as String? ?? _kBadWordsRejected,
           ));
         }
       }
@@ -1481,7 +1504,7 @@ class RoomCubit extends Cubit<RoomState> {
       await appDio.delete('/rooms/$_roomId/messages/$messageId');
     } catch (e) {
       logDebug('[RoomCubit] deleteMessage error: $e');
-      emit(state.copyWith(chatNoticeMessage: 'تعذر حذف الرسالة'));
+      emit(state.copyWith(chatNoticeMessage: _kDeleteMessageErr));
     }
   }
 
@@ -1489,11 +1512,10 @@ class RoomCubit extends Cubit<RoomState> {
     if (!isModerator || userId.isEmpty || userId == _userId) return;
     try {
       await appDio.post('/rooms/$_roomId/users/$userId/chat-mute');
-      emit(state.copyWith(
-          chatNoticeMessage: 'تم حظر المستخدم من الكتابة في الشات'));
+      emit(state.copyWith(chatNoticeMessage: _kUserChatMuted));
     } catch (e) {
       logDebug('[RoomCubit] muteUserFromChat error: $e');
-      emit(state.copyWith(chatNoticeMessage: 'تعذر حظر المستخدم من الشات'));
+      emit(state.copyWith(chatNoticeMessage: _kMuteChatErr));
     }
   }
 
@@ -1504,12 +1526,11 @@ class RoomCubit extends Cubit<RoomState> {
       await appDio.post('/rooms/$_roomId/users/$userId/room-ban', data: {
         'duration_minutes': safeMinutes,
       });
-      emit(state.copyWith(
-          chatNoticeMessage: 'تم طرد المستخدم مؤقتاً من الغرفة'));
+      emit(state.copyWith(chatNoticeMessage: _kUserTempKicked));
       _scheduleAttendeeRefresh();
     } catch (e) {
       logDebug('[RoomCubit] tempBanUser error: $e');
-      emit(state.copyWith(chatNoticeMessage: 'تعذر طرد المستخدم مؤقتاً'));
+      emit(state.copyWith(chatNoticeMessage: _kTempKickErr));
     }
   }
 
@@ -1517,11 +1538,11 @@ class RoomCubit extends Cubit<RoomState> {
     if (!isModerator || userId.isEmpty || userId == _userId) return;
     try {
       await appDio.post('/rooms/$_roomId/users/$userId/global-ban');
-      emit(state.copyWith(chatNoticeMessage: 'تم حظر المستخدم من كل الرومات'));
+      emit(state.copyWith(chatNoticeMessage: _kUserGlobalBanned));
       _scheduleAttendeeRefresh();
     } catch (e) {
       logDebug('[RoomCubit] globalBanUser error: $e');
-      emit(state.copyWith(chatNoticeMessage: 'تعذر حظر المستخدم'));
+      emit(state.copyWith(chatNoticeMessage: _kGlobalBanErr));
     }
   }
 
@@ -2625,6 +2646,7 @@ class _FloatingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isAdmin = message.senderRole == 'admin';
     final isElevated = isAdmin || message.senderRole == 'supervisor';
     // Elevated senders get a warm accent name; everyone else reads white.
@@ -2704,7 +2726,7 @@ class _FloatingBubble extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        message.text,
+                        message.isDeleted ? l10n.messageDeletedByAdmin : message.text,
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -2743,18 +2765,18 @@ class _ModerationDialog extends StatelessWidget {
     final isGlobalBan = event is GlobalBanEvent;
     final isRoomClosed = event is RoomClosedEvent;
     final title = isRoomClosed
-        ? 'تم إغلاق الغرفة'
+        ? l10n.roomClosedTitle
         : isGlobalBan
-            ? 'تم حظرك من كل الرومات'
+            ? l10n.bannedFromAllRoomsTitle
             : isKick
                 ? l10n.kickedFromRoom
                 : l10n.tempBannedFromRoom;
     final body = isRoomClosed
-        ? 'تم إغلاق هذه الغرفة بواسطة الإدارة.'
+        ? l10n.roomClosedBody
         : isGlobalBan
             ? ((event as GlobalBanEvent).reason.isNotEmpty
                 ? (event as GlobalBanEvent).reason
-                : 'تم حظر حسابك من دخول الرومات الصوتية بواسطة الإدارة.')
+                : l10n.bannedFromAllRoomsBody)
             : isKick
                 ? l10n.kickedFromRoomBody
                 : l10n.tempBannedFromRoomBody;
@@ -2943,7 +2965,7 @@ class _ChatBubble extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            message.text,
+            isDeleted ? AppLocalizations.of(context)!.messageDeletedByAdmin : message.text,
             textAlign: TextAlign.start,
             style: TextStyle(
               fontFamily: 'Cairo',
@@ -3173,7 +3195,7 @@ class _ChatInput extends StatelessWidget {
                   isDense: true,
                   hintText: enabled
                       ? l10n.messagePlaceholder
-                      : _chatMutedByAdminMessage,
+                      : l10n.chatMutedByAdmin,
                   hintStyle: const TextStyle(
                     fontFamily: 'Tajawal',
                     fontSize: 13,
@@ -4078,10 +4100,10 @@ class _RoomUserProfileSheet extends StatelessWidget {
               height: 1,
             ),
             const SizedBox(height: 14),
-            const Align(
+            Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(
-                'أدوات الإدارة',
+                l10n.adminToolsTitle,
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 14,
@@ -4094,7 +4116,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
             if (onMuteChat != null)
               _SheetActionTile(
                 icon: Icons.voice_over_off_rounded,
-                label: 'بلك من الشات',
+                label: l10n.muteFromChatAction,
                 color: AppColors.darkText,
                 iconBg: AppColors.primary.withValues(alpha: 0.10),
                 onTap: onMuteChat!,
@@ -4102,7 +4124,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
             if (onTempBan != null)
               _SheetActionTile(
                 icon: Icons.timer_off_rounded,
-                label: 'طرد مؤقت',
+                label: l10n.tempKickAction,
                 color: AppColors.warning,
                 iconBg: AppColors.warning.withValues(alpha: 0.16),
                 onTap: onTempBan!,
@@ -4110,7 +4132,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
             if (onGlobalBan != null)
               _SheetActionTile(
                 icon: Icons.block_rounded,
-                label: 'حظر من كل الرومات',
+                label: l10n.globalBanAction,
                 color: AppColors.error,
                 iconBg: AppColors.error.withValues(alpha: 0.16),
                 onTap: onGlobalBan!,
@@ -4123,6 +4145,7 @@ class _RoomUserProfileSheet extends StatelessWidget {
 }
 
 Future<int?> _askTempBanDuration(BuildContext context) async {
+  final l10n = AppLocalizations.of(context)!;
   final ctrl = TextEditingController(text: '60');
   try {
     return showDialog<int>(
@@ -4130,10 +4153,10 @@ Future<int?> _askTempBanDuration(BuildContext context) async {
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text(
-          'مدة الطرد المؤقت',
+        title: Text(
+          l10n.tempKickDurationLabel,
           textAlign: TextAlign.right,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Cairo',
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -4146,7 +4169,7 @@ Future<int?> _askTempBanDuration(BuildContext context) async {
           textAlign: TextAlign.center,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
-            suffixText: 'دقيقة',
+            suffixText: l10n.minuteSuffix,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -4155,7 +4178,7 @@ Future<int?> _askTempBanDuration(BuildContext context) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            child: Text(l10n.cancel, style: const TextStyle(fontFamily: 'Cairo')),
           ),
           TextButton(
             onPressed: () {
@@ -4163,7 +4186,7 @@ Future<int?> _askTempBanDuration(BuildContext context) async {
               Navigator.of(dialogCtx)
                   .pop(value == null || value < 1 ? 60 : value);
             },
-            child: const Text('تأكيد', style: TextStyle(fontFamily: 'Cairo')),
+            child: Text(l10n.confirm, style: const TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -4174,25 +4197,26 @@ Future<int?> _askTempBanDuration(BuildContext context) async {
 }
 
 Future<bool> _confirmGlobalBan(BuildContext context) async {
+  final l10n = AppLocalizations.of(context)!;
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogCtx) => AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: const Text(
-        'تأكيد الحظر',
+      title: Text(
+        l10n.confirmBanTitle,
         textAlign: TextAlign.right,
-        style: TextStyle(
+        style: const TextStyle(
           fontFamily: 'Cairo',
           fontSize: 17,
           fontWeight: FontWeight.w800,
           color: AppColors.darkText,
         ),
       ),
-      content: const Text(
-        'سيتم منع المستخدم من دخول كل الرومات الصوتية.',
+      content: Text(
+        l10n.confirmBanBody,
         textAlign: TextAlign.right,
-        style: TextStyle(
+        style: const TextStyle(
           fontFamily: 'Tajawal',
           fontSize: 14,
           color: AppColors.textSecondary,
@@ -4202,13 +4226,13 @@ Future<bool> _confirmGlobalBan(BuildContext context) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogCtx).pop(false),
-          child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+          child: Text(l10n.cancel, style: const TextStyle(fontFamily: 'Cairo')),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogCtx).pop(true),
-          child: const Text(
-            'حظر',
-            style: TextStyle(fontFamily: 'Cairo', color: AppColors.error),
+          child: Text(
+            l10n.banAction,
+            style: const TextStyle(fontFamily: 'Cairo', color: AppColors.error),
           ),
         ),
       ],
@@ -4594,7 +4618,7 @@ class _RoomDetailsPageState extends State<RoomDetailsPage> {
                 behavior: SnackBarBehavior.floating,
                 backgroundColor: AppColors.roomOverlay,
                 content: Text(
-                  s.chatNoticeMessage!,
+                  _resolveNotice(s.chatNoticeMessage!, AppLocalizations.of(ctx)!),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Cairo',
@@ -4720,6 +4744,7 @@ class _JoiningRoomDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: false,
       child: Material(
@@ -4745,18 +4770,18 @@ class _JoiningRoomDialog extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  MubtaathLoader(
+                  const MubtaathLoader(
                     color: AppColors.primary,
                     strokeWidth: 2.8,
                   ),
-                  SizedBox(height: 18),
+                  const SizedBox(height: 18),
                   Text(
-                    _joiningRoomMessage,
+                    l10n.joiningRoomMessage,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 15,
                       fontWeight: FontWeight.w700,

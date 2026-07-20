@@ -19,6 +19,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/utils/bilingual_date.dart';
 import 'package:mubtaath/core/widgets/mubtaath_loader.dart';
 import 'package:mubtaath/features/reports/presentation/cubit/report_cubit.dart';
 
@@ -417,9 +418,9 @@ class _SupportViewState extends State<_SupportView>
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'إعادة المحاولة',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.tryAgain,
+                    style: const TextStyle(
                         fontFamily: 'Cairo', fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -836,8 +837,7 @@ class _ChatBubble extends StatelessWidget {
             ),
             child: Text(
               msg.content,
-              textAlign:     TextAlign.right,
-              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.start,
               style: const TextStyle(
                 fontFamily: 'Tajawal',
                 fontSize:   13,
@@ -852,7 +852,7 @@ class _ChatBubble extends StatelessWidget {
             const Icon(LucideIcons.clock, size: 11, color: AppColors.textSecondary)
           else if (msg.at != null)
             Text(
-              _fmtTime(msg.at!),
+              formatShortDateTime(msg.at!, Localizations.localeOf(context).languageCode),
               style: const TextStyle(
                 fontFamily: 'Tajawal',
                 fontSize:   10,
@@ -862,16 +862,6 @@ class _ChatBubble extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _fmtTime(DateTime dt) {
-    const months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day} ${months[dt.month - 1]} $h:$m';
   }
 }
 
@@ -904,7 +894,7 @@ class _MetadataStrip extends StatelessWidget {
             ),
           ),
           Text(
-            _fmtDate(report.createdAt),
+            formatShortDate(report.createdAt, Localizations.localeOf(context).languageCode),
             style: const TextStyle(
               fontFamily: 'Tajawal',
               fontSize:   11,
@@ -914,14 +904,6 @@ class _MetadataStrip extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _fmtDate(DateTime dt) {
-    const months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }
 
@@ -937,6 +919,7 @@ class _ChatInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsetsDirectional.fromSTEB(
           12, 8, 12, MediaQuery.of(context).padding.bottom + 8),
@@ -953,10 +936,9 @@ class _ChatInputBar extends StatelessWidget {
               maxLines:      4,
               minLines:      1,
               maxLength:     1000,
-              textDirection: TextDirection.rtl,
-              textAlign:     TextAlign.right,
+              textAlign:     TextAlign.start,
               decoration: InputDecoration(
-                hintText:    'اكتب ردك...',
+                hintText:    l10n.typeYourReply,
                 counterText: '',
                 hintStyle: const TextStyle(
                   fontFamily: 'Tajawal',
@@ -1014,6 +996,7 @@ class _WaitingBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsetsDirectional.fromSTEB(
           16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
@@ -1021,14 +1004,14 @@ class _WaitingBar extends StatelessWidget {
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.cardBorder, width: 0.8)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.clock, size: 14, color: AppColors.textSecondary),
-          SizedBox(width: 8),
+          const Icon(LucideIcons.clock, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
           Text(
-            'في انتظار رد فريق الدعم',
-            style: TextStyle(
+            l10n.waitingForSupportReply,
+            style: const TextStyle(
               fontFamily: 'Tajawal',
               fontSize:   12.5,
               color:      AppColors.textSecondary,
@@ -1070,7 +1053,7 @@ class _ClosedBar extends StatelessWidget {
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 8),
           Text(
-            'التذكرة: $label',
+            l10n.ticketLabel(label),
             style: TextStyle(
               fontFamily: 'Cairo',
               fontSize:   12.5,
@@ -1238,8 +1221,7 @@ class _ReportHistoryCard extends StatelessWidget {
                     report.adminReply!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    textAlign:     TextAlign.right,
-                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.start,
                     style: const TextStyle(
                       fontFamily: 'Tajawal',
                       fontSize:   12.5,
@@ -1263,7 +1245,7 @@ class _ReportHistoryCard extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  _formatDate(report.createdAt),
+                  formatShortDate(report.createdAt, Localizations.localeOf(context).languageCode),
                   style: const TextStyle(
                     fontFamily: 'Tajawal',
                     fontSize:   11,
@@ -1274,19 +1256,23 @@ class _ReportHistoryCard extends StatelessWidget {
                 // Subtle "tap to view" hint
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Text(
-                      'عرض التفاصيل',
-                      style: TextStyle(
+                      l10n.viewDetails,
+                      style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontSize:   10,
                         fontWeight: FontWeight.w600,
                         color:      AppColors.primary,
                       ),
                     ),
-                    SizedBox(width: 3),
-                    Icon(LucideIcons.chevronLeft,
-                        size: 12, color: AppColors.primary),
+                    const SizedBox(width: 3),
+                    Icon(
+                      Directionality.of(context) == TextDirection.rtl
+                          ? LucideIcons.chevronLeft
+                          : LucideIcons.chevronRight,
+                      size: 12, color: AppColors.primary,
+                    ),
                   ],
                 ),
               ],
@@ -1295,14 +1281,6 @@ class _ReportHistoryCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    const months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 }
 
