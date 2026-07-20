@@ -142,6 +142,10 @@ class CoreTextField extends StatelessWidget {
     return TextField(
       controller:      controller,
       obscureText:     obscureText,
+      // Obscured (password) fields: stop the keyboard caching/learning or
+      // offering suggestions for typed credentials.
+      enableSuggestions: !obscureText,
+      autocorrect:       !obscureText,
       keyboardType:    keyboardType,
       inputFormatters: inputFormatters,
       enabled:         enabled,

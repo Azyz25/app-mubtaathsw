@@ -11,6 +11,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -77,10 +78,13 @@ class SocialAuthService {
 
       return _exchangeWithBackend(provider: 'google', idToken: idToken);
     } catch (e) {
-      // Surface the real exception instead of a generic message — this is
-      // the only visibility into what actually failed for a user who can't
-      // pull device logs themselves.
-      return SocialAuthResult(success: false, errorMessage: 'Google: $e');
+      // Debug builds surface the real exception (the only visibility into what
+      // actually failed on-device); release builds show a generic localized
+      // message so internal exception detail never reaches end users.
+      return SocialAuthResult(
+        success: false,
+        errorMessage: kDebugMode ? 'Google: $e' : 'socialAuthError',
+      );
     }
   }
 
@@ -127,9 +131,15 @@ class SocialAuthService {
       if (e.code == AuthorizationErrorCode.canceled) {
         return const SocialAuthResult(success: false, cancelled: true);
       }
-      return SocialAuthResult(success: false, errorMessage: 'Apple: ${e.code} ${e.message}');
+      return SocialAuthResult(
+        success: false,
+        errorMessage: kDebugMode ? 'Apple: ${e.code} ${e.message}' : 'socialAuthError',
+      );
     } catch (e) {
-      return SocialAuthResult(success: false, errorMessage: 'Apple: $e');
+      return SocialAuthResult(
+        success: false,
+        errorMessage: kDebugMode ? 'Apple: $e' : 'socialAuthError',
+      );
     }
   }
 
@@ -158,9 +168,17 @@ class SocialAuthService {
       );
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;
-      return SocialAuthResult(success: false, errorMessage: msg ?? 'Backend: ${e.message}');
+      // Keep the server's own (user-facing) message; only scrub the raw
+      // network-error fallback in release.
+      return SocialAuthResult(
+        success: false,
+        errorMessage: msg ?? (kDebugMode ? 'Backend: ${e.message}' : 'socialAuthError'),
+      );
     } catch (e) {
-      return SocialAuthResult(success: false, errorMessage: 'Backend: $e');
+      return SocialAuthResult(
+        success: false,
+        errorMessage: kDebugMode ? 'Backend: $e' : 'socialAuthError',
+      );
     }
   }
 }

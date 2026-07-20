@@ -574,7 +574,7 @@ void _showAboutSheet(BuildContext context) {
                       behavior: HitTestBehavior.opaque,
                       child: _AboutInfoRow(
                         label: l10n.appVersion,
-                        value: '1.0.0+23',
+                        value: '1.0.0+24',
                       ),
                     ),
                     const Divider(color: AppColors.cardBorder, height: 1),

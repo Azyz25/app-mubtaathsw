@@ -76,6 +76,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
       focusNode: widget.focusNode,
       keyboardType: widget.keyboardType,
       obscureText: widget.isPassword && _obscureText,
+      // Password fields: no keyboard caching / suggestions for credentials.
+      enableSuggestions: !widget.isPassword,
+      autocorrect: !widget.isPassword,
       textInputAction: widget.textInputAction,
       onFieldSubmitted: widget.onSubmitted,
       validator: widget.validator,

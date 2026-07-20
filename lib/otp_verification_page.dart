@@ -449,6 +449,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                               controller: _pinController,
                               length: 6,
                               keyboardType: TextInputType.number,
+                              // Don't let the keyboard cache/learn the OTP code.
+                              enableSuggestions: false,
+                              enableIMEPersonalizedLearning: false,
                               autofocus: true,
                               enabled: !isLoading,
 

@@ -721,6 +721,9 @@ class _PwdField extends StatelessWidget {
         TextField(
           controller:  controller,
           obscureText: !visible,
+          // Password-change field — no keyboard caching / suggestions.
+          enableSuggestions: false,
+          autocorrect:       false,
           textAlign:   TextAlign.start,
           style: const TextStyle(
             fontFamily: 'Cairo',

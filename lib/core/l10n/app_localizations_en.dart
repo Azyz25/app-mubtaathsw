@@ -407,7 +407,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noActiveRoomsHint =>
-      'All rooms are currently closed. Check back soon — new rooms open regularly, or start your own.';
+      'All rooms are currently closed. New rooms will open soon.';
 
   @override
   String get notificationsTitle => 'Notifications';

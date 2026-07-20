@@ -402,7 +402,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noActiveRoomsHint =>
-      'جميع الغرف مغلقة الآن. تابعنا — ستُفتح غرف جديدة قريباً، أو أنشئ غرفتك.';
+      'جميع الغرف مغلقة الآن، وستُفتح غرف جديدة قريباً.';
 
   @override
   String get notificationsTitle => 'الإشعارات';
