@@ -313,10 +313,18 @@ class ChatMessage {
 
 class RoomDetailModel {
   final String id;
-  final String title;
-  final String description;
+  final String titleAr;
+  final String titleEn;
+  final String descriptionAr;
+  final String descriptionEn;
   final String coverImageUrl;
   final int listenerCount;
+
+  String localizedTitle(String lang) =>
+      lang == 'ar' ? (titleAr.isNotEmpty ? titleAr : titleEn) : (titleEn.isNotEmpty ? titleEn : titleAr);
+  String localizedDescription(String lang) => lang == 'ar'
+      ? (descriptionAr.isNotEmpty ? descriptionAr : descriptionEn)
+      : (descriptionEn.isNotEmpty ? descriptionEn : descriptionAr);
 
   /// Unified attendees list — hosts, speakers AND listeners together.
   /// The backend keeps the JSON key 'speakers' for backward compatibility,
@@ -344,8 +352,10 @@ class RoomDetailModel {
 
   const RoomDetailModel({
     required this.id,
-    required this.title,
-    required this.description,
+    required this.titleAr,
+    required this.titleEn,
+    required this.descriptionAr,
+    required this.descriptionEn,
     required this.coverImageUrl,
     required this.listenerCount,
     required this.attendees,
@@ -370,8 +380,10 @@ class RoomDetailModel {
 
   factory RoomDetailModel.fromJson(Map<String, dynamic> j) => RoomDetailModel(
         id: j['id'] as String? ?? '',
-        title: j['title'] as String? ?? j['titleEn'] as String? ?? '',
-        description: j['description'] as String? ?? '',
+        titleAr: j['titleAr'] as String? ?? '',
+        titleEn: j['titleEn'] as String? ?? '',
+        descriptionAr: j['descriptionAr'] as String? ?? '',
+        descriptionEn: j['descriptionEn'] as String? ?? '',
         coverImageUrl: j['coverImageUrl'] as String? ?? '',
         listenerCount: j['listenerCount'] as int? ?? 0,
         attendees: (j['speakers'] as List<dynamic>? ?? [])
@@ -2145,6 +2157,7 @@ class _RoomInfoSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final lang = Localizations.localeOf(context).languageCode;
 
     return Container(
       decoration: const BoxDecoration(
@@ -2176,7 +2189,7 @@ class _RoomInfoSheet extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                room.title,
+                room.localizedTitle(lang),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontFamily: 'Cairo',
@@ -2200,10 +2213,10 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
               ),
               // Description — muted typography, directly under the count.
-              if (room.description.trim().isNotEmpty) ...[
+              if (room.localizedDescription(lang).trim().isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(
-                  room.description,
+                  room.localizedDescription(lang),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Tajawal',
@@ -3388,6 +3401,7 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final lang = Localizations.localeOf(context).languageCode;
     final top = MediaQuery.of(context).padding.top;
     final bot = MediaQuery.of(context).padding.bottom;
     final room = widget.room;
@@ -3470,7 +3484,7 @@ class _LiveRoomViewState extends State<_LiveRoomView> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
-                    room.title,
+                    room.localizedTitle(lang),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: 'Cairo',

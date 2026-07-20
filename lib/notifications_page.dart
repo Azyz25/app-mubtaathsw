@@ -181,13 +181,20 @@ class NotifModel {
     final notifType      = j['notificationType']?.toString();
     final relatedId      = j['relatedId']?.toString();
 
+    // titleAr/titleEn/bodyAr/bodyEn are the current API shape. title/body
+    // are kept as a fallback only for safety against a stale cached response.
+    final titleAr  = (j['titleAr'] ?? j['title'] ?? '').toString();
+    final bodyAr   = (j['bodyAr']  ?? j['body']  ?? '').toString();
+    final titleEnRaw = j['titleEn']?.toString();
+    final bodyEnRaw  = j['bodyEn']?.toString();
+
     return NotifModel(
       id:               (j['id'] ?? '').toString(),
       type:             _resolveType(notifType, j['category']?.toString()),
-      titleAr:          (j['title'] ?? '').toString(),
-      titleEn:          (j['title'] ?? '').toString(),
-      bodyAr:           (j['body']  ?? '').toString(),
-      bodyEn:           (j['body']  ?? '').toString(),
+      titleAr:          titleAr,
+      titleEn:          titleEnRaw != null && titleEnRaw.isNotEmpty ? titleEnRaw : titleAr,
+      bodyAr:           bodyAr,
+      bodyEn:           bodyEnRaw != null && bodyEnRaw.isNotEmpty ? bodyEnRaw : bodyAr,
       sentAt:           sentAt,
       isRead:           isRead,
       isFeatured:       false,

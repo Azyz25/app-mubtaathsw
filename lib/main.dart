@@ -9,12 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/security/tamper_guard_service.dart';
 import 'package:mubtaath/core/security/tamper_warning_gate.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/services/fcm_topic_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/services/log_service.dart';
 import 'package:mubtaath/core/theme/theme.dart';
@@ -370,11 +372,17 @@ Future<void> _setupFcmMessaging() async {
   }
 
   // The admin dashboard broadcasts push notifications via FCM TOPIC
-  // messaging (topic "all" for every user) — a topic send only reaches
-  // devices that have explicitly subscribed to it, so every install must
-  // subscribe here regardless of login state.
+  // messaging, split per-language ("all_ar" / "all_en") so each device only
+  // receives pushes in the language it reads — every install must subscribe
+  // here regardless of login state. LanguageCubit isn't constructed yet at
+  // this point in startup, so the persisted locale is read directly (same
+  // SharedPreferences key LanguageCubit restores from); language switches
+  // after startup are handled by LanguageCubit.changeLanguage instead.
   try {
-    await messaging.subscribeToTopic('all');
+    await messaging.unsubscribeFromTopic('all'); // legacy pre-split topic
+    final prefs = await SharedPreferences.getInstance();
+    final lang  = prefs.getString(LanguageCubit.kLangKey) ?? 'ar';
+    await FcmTopicService.subscribeForLocale(lang);
   } catch (_) {
     // Non-fatal — retried on next launch.
   }

@@ -9,7 +9,7 @@
 // =============================================================================
 
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -877,15 +877,18 @@ class _SettingsView extends StatelessWidget {
                           onTap: () => context.push('/legal/about'),
                         ),
 
-                        const SizedBox(height: 14),
-
-                        // TEMP — push-notification diagnostic (iOS APNs debug).
-                        // Remove once notifications are confirmed working.
-                        _SettingsCard(
-                          icon:  LucideIcons.bell,
-                          label: l10n.pushDiagnosticsLabel,
-                          onTap: () => _showPushDiagnostics(context),
-                        ),
+                        // Debug-only push-notification diagnostic (iOS APNs).
+                        // Never shown in a release build — store users/reviewers
+                        // never see this; still reachable from a debug build if
+                        // push issues need investigating again.
+                        if (kDebugMode) ...[
+                          const SizedBox(height: 14),
+                          _SettingsCard(
+                            icon:  LucideIcons.bell,
+                            label: l10n.pushDiagnosticsLabel,
+                            onTap: () => _showPushDiagnostics(context),
+                          ),
+                        ],
 
                         // Fixed gap, not Spacer — this Column now scrolls, so
                         // Spacer would fight an unbounded height instead of
