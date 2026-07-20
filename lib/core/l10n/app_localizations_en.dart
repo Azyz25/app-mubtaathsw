@@ -754,6 +754,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newPasswordHint => 'Enter a new password';
 
   @override
+  String get passwordChangedSuccess => 'Password changed successfully';
+
+  @override
+  String get currentPasswordIncorrect => 'Current password is incorrect';
+
+  @override
   String get speakerRole => 'Speaker';
 
   @override

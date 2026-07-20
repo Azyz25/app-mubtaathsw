@@ -333,6 +333,8 @@
   "currentPasswordHint": "أدخل كلمة مرورك الحالية",
   "newPassword": "كلمة المرور الجديدة",
   "newPasswordHint": "أدخل كلمة مرور جديدة",
+  "passwordChangedSuccess": "تم تغيير كلمة المرور بنجاح",
+  "currentPasswordIncorrect": "كلمة المرور الحالية غير صحيحة",
 
   "speakerRole": "متحدث",
   "speakersCount": "{count} متحدثين",

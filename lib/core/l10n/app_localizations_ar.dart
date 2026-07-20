@@ -747,6 +747,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get newPasswordHint => 'أدخل كلمة مرور جديدة';
 
   @override
+  String get passwordChangedSuccess => 'تم تغيير كلمة المرور بنجاح';
+
+  @override
+  String get currentPasswordIncorrect => 'كلمة المرور الحالية غير صحيحة';
+
+  @override
   String get speakerRole => 'متحدث';
 
   @override

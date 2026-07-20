@@ -333,6 +333,8 @@
   "currentPasswordHint": "Enter your current password",
   "newPassword": "New password",
   "newPasswordHint": "Enter a new password",
+  "passwordChangedSuccess": "Password changed successfully",
+  "currentPasswordIncorrect": "Current password is incorrect",
 
   "speakerRole": "Speaker",
   "speakersCount": "{count} speakers",

@@ -833,7 +833,7 @@ abstract class AppLocalizations {
   /// No description provided for @noActiveRoomsHint.
   ///
   /// In ar, this message translates to:
-  /// **'جميع الغرف مغلقة الآن. تابعنا — ستُفتح غرف جديدة قريباً، أو أنشئ غرفتك.'**
+  /// **'جميع الغرف مغلقة الآن، وستُفتح غرف جديدة قريباً.'**
   String get noActiveRoomsHint;
 
   /// No description provided for @notificationsTitle.
@@ -1465,6 +1465,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'أدخل كلمة مرور جديدة'**
   String get newPasswordHint;
+
+  /// No description provided for @passwordChangedSuccess.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تغيير كلمة المرور بنجاح'**
+  String get passwordChangedSuccess;
+
+  /// No description provided for @currentPasswordIncorrect.
+  ///
+  /// In ar, this message translates to:
+  /// **'كلمة المرور الحالية غير صحيحة'**
+  String get currentPasswordIncorrect;
 
   /// No description provided for @speakerRole.
   ///

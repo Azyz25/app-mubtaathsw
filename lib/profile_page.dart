@@ -793,13 +793,87 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     super.dispose();
   }
 
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            textAlign: TextAlign.start,
+            style: const TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: isError ? AppColors.error : AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+  }
+
   Future<void> _submit() async {
+    final l10n    = AppLocalizations.of(context)!;
+    final current = _currentCtrl.text;
+    final next    = _newCtrl.text;
+    final confirm = _confirmCtrl.text;
+
+    if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+      _showSnack(l10n.validPasswordMin, isError: true);
+      return;
+    }
+    if (next.length < 8) {
+      _showSnack(l10n.validPasswordMin, isError: true);
+      return;
+    }
+    if (next != confirm) {
+      _showSnack(l10n.validPasswordMismatch, isError: true);
+      return;
+    }
+
     setState(() => _saving = true);
-    // TODO: replace with real API call
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() => _saving = false);
-    Navigator.of(context).pop();
+    try {
+      await appDio.put('/user/password', data: {
+        'current_password':     current,
+        'password':              next,
+        'password_confirmation': confirm,
+      });
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.passwordChangedSuccess,
+              style: const TextStyle(fontFamily: 'Tajawal', fontSize: 14, color: Colors.white),
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final status = e.response?.statusCode;
+      final serverMsg = e.response?.data?['message'] as String?;
+      _showSnack(
+        status == 422 ? l10n.currentPasswordIncorrect : (serverMsg ?? l10n.saveError),
+        isError: true,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSnack(l10n.saveError, isError: true);
+    }
   }
 
   @override
