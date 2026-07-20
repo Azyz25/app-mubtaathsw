@@ -12,6 +12,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
+import 'package:mubtaath/core/security/tamper_guard_service.dart';
+import 'package:mubtaath/core/security/tamper_warning_gate.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/services/log_service.dart';
@@ -306,6 +308,15 @@ void main() async {
 
   runApp(const MubtaathApp());
 
+  // D2/D3 — root/debugger/hooking/emulator checks. Fire-and-forget like the
+  // FCM setup below: this is a native round-trip that must never delay first
+  // paint. Warn-only — see TamperGuardService for why (false-positive risk).
+  unawaited(
+    TamperGuardService.instance.start(
+      (threat) => tamperThreatNotifier.value = threat,
+    ),
+  );
+
   PushDiagnostics.firebaseReady = firebaseReady;
   // Deliberately NOT awaited before runApp(): permission dialogs and APNs/FCM
   // registration are OS/network round-trips that can stall for a long time
@@ -412,6 +423,8 @@ class MubtaathApp extends StatelessWidget {
             locale: locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales:       AppLocalizations.supportedLocales,
+            builder: (context, child) =>
+                TamperWarningGate(child: child ?? const SizedBox.shrink()),
           );
         },
       ),

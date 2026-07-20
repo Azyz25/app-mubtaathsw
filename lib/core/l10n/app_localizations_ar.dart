@@ -612,7 +612,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'حرّك جوالك على شكل رقم ٨ عدة مرات لمعايرة البوصلة';
 
   @override
-  String get gotIt => 'تمام';
+  String get gotIt => 'حسناً';
 
   @override
   String degreeFromNorth(String degree) {
@@ -856,6 +856,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String ticketLabel(String status) {
     return 'التذكرة: $status';
   }
+
+  @override
+  String get securityWarningTitle => 'تنبيه أمني';
+
+  @override
+  String get securityWarningRoot =>
+      'يبدو أن جهازك يحتوي على صلاحيات روت/جيلبريك، ما قد يعرّض بيانات حسابك للخطر.';
+
+  @override
+  String get securityWarningDebug => 'تم اكتشاف أداة تصحيح متصلة بالتطبيق.';
+
+  @override
+  String get securityWarningHooks =>
+      'تم اكتشاف أداة تلاعب بالتطبيق تعمل على جهازك.';
+
+  @override
+  String get securityWarningEmulator =>
+      'يبدو أنك تشغّل التطبيق على محاكي وليس جهازاً حقيقياً.';
+
+  @override
+  String get securityWarningDevMode => 'وضع المطور مفعّل على جهازك.';
+
+  @override
+  String get securityWarningAdb => 'تصحيح USB (ADB) مفعّل على جهازك.';
 
   @override
   String get speakerRole => 'متحدث';

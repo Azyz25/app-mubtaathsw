@@ -371,6 +371,14 @@
   "@ticketLabel": {
     "placeholders": { "status": { "type": "String" } }
   },
+  "securityWarningTitle": "تنبيه أمني",
+  "securityWarningRoot": "يبدو أن جهازك يحتوي على صلاحيات روت/جيلبريك، ما قد يعرّض بيانات حسابك للخطر.",
+  "securityWarningDebug": "تم اكتشاف أداة تصحيح متصلة بالتطبيق.",
+  "securityWarningHooks": "تم اكتشاف أداة تلاعب بالتطبيق تعمل على جهازك.",
+  "securityWarningEmulator": "يبدو أنك تشغّل التطبيق على محاكي وليس جهازاً حقيقياً.",
+  "securityWarningDevMode": "وضع المطور مفعّل على جهازك.",
+  "securityWarningAdb": "تصحيح USB (ADB) مفعّل على جهازك.",
+  "gotIt": "حسناً",
 
   "speakerRole": "متحدث",
   "speakersCount": "{count} متحدثين",

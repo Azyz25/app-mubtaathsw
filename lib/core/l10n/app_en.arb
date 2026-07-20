@@ -371,6 +371,14 @@
   "@ticketLabel": {
     "placeholders": { "status": { "type": "String" } }
   },
+  "securityWarningTitle": "Security warning",
+  "securityWarningRoot": "Your device appears to be rooted or jailbroken, which may put your account data at risk.",
+  "securityWarningDebug": "A debugger appears to be attached to the app.",
+  "securityWarningHooks": "App-hooking tooling was detected running on your device.",
+  "securityWarningEmulator": "You appear to be running the app on an emulator, not a real device.",
+  "securityWarningDevMode": "Developer mode is enabled on your device.",
+  "securityWarningAdb": "USB debugging (ADB) is enabled on your device.",
+  "gotIt": "Got it",
 
   "speakerRole": "Speaker",
   "speakersCount": "{count} speakers",

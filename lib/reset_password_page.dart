@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:pinput/pinput.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/security/screenshot_blocker_mixin.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
@@ -187,7 +188,8 @@ class ResetPasswordPage extends StatefulWidget {
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _ResetPasswordPageState extends State<ResetPasswordPage> {
+class _ResetPasswordPageState extends State<ResetPasswordPage>
+    with ScreenshotBlockerMixin<ResetPasswordPage> {
   final TextEditingController _pinCtrl = TextEditingController();
   final TextEditingController _passCtrl = TextEditingController();
   final TextEditingController _confirmCtrl = TextEditingController();

@@ -1223,7 +1223,7 @@ abstract class AppLocalizations {
   /// No description provided for @gotIt.
   ///
   /// In ar, this message translates to:
-  /// **'تمام'**
+  /// **'حسناً'**
   String get gotIt;
 
   /// No description provided for @degreeFromNorth.
@@ -1675,6 +1675,48 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'التذكرة: {status}'**
   String ticketLabel(String status);
+
+  /// No description provided for @securityWarningTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيه أمني'**
+  String get securityWarningTitle;
+
+  /// No description provided for @securityWarningRoot.
+  ///
+  /// In ar, this message translates to:
+  /// **'يبدو أن جهازك يحتوي على صلاحيات روت/جيلبريك، ما قد يعرّض بيانات حسابك للخطر.'**
+  String get securityWarningRoot;
+
+  /// No description provided for @securityWarningDebug.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم اكتشاف أداة تصحيح متصلة بالتطبيق.'**
+  String get securityWarningDebug;
+
+  /// No description provided for @securityWarningHooks.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم اكتشاف أداة تلاعب بالتطبيق تعمل على جهازك.'**
+  String get securityWarningHooks;
+
+  /// No description provided for @securityWarningEmulator.
+  ///
+  /// In ar, this message translates to:
+  /// **'يبدو أنك تشغّل التطبيق على محاكي وليس جهازاً حقيقياً.'**
+  String get securityWarningEmulator;
+
+  /// No description provided for @securityWarningDevMode.
+  ///
+  /// In ar, this message translates to:
+  /// **'وضع المطور مفعّل على جهازك.'**
+  String get securityWarningDevMode;
+
+  /// No description provided for @securityWarningAdb.
+  ///
+  /// In ar, this message translates to:
+  /// **'تصحيح USB (ADB) مفعّل على جهازك.'**
+  String get securityWarningAdb;
 
   /// No description provided for @speakerRole.
   ///

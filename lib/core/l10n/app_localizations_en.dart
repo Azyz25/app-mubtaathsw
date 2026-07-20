@@ -865,6 +865,33 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get securityWarningTitle => 'Security warning';
+
+  @override
+  String get securityWarningRoot =>
+      'Your device appears to be rooted or jailbroken, which may put your account data at risk.';
+
+  @override
+  String get securityWarningDebug =>
+      'A debugger appears to be attached to the app.';
+
+  @override
+  String get securityWarningHooks =>
+      'App-hooking tooling was detected running on your device.';
+
+  @override
+  String get securityWarningEmulator =>
+      'You appear to be running the app on an emulator, not a real device.';
+
+  @override
+  String get securityWarningDevMode =>
+      'Developer mode is enabled on your device.';
+
+  @override
+  String get securityWarningAdb =>
+      'USB debugging (ADB) is enabled on your device.';
+
+  @override
   String get speakerRole => 'Speaker';
 
   @override

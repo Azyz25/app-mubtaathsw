@@ -37,6 +37,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl_phone_field/countries.dart' show countries, Country;
+import 'package:mubtaath/core/security/screenshot_blocker_mixin.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
@@ -292,7 +293,8 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends State<RegisterPage>
+    with ScreenshotBlockerMixin<RegisterPage> {
   // ── Controllers ────────────────────────────────────────────────────────────
   final TextEditingController _fullNameController    = TextEditingController();
   final TextEditingController _usernameController    = TextEditingController();

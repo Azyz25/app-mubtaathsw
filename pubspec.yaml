@@ -1,7 +1,7 @@
 name: mubtaath
 description: "A Saudi student voice-based social platform for students abroad"
 publish_to: "none"
-version: 1.0.0+26
+version: 1.0.0+27
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -84,6 +84,10 @@ dependencies:
   flutter_local_notifications: ^17.2.3 # Scheduled adhan-time notifications
   timezone: ^0.9.4                      # TZDateTime for zoned scheduling
   flutter_timezone: ^3.0.1              # Device local timezone name
+
+  # ─── Security hardening (D1–D3) ──────────────────────────────
+  screen_protector: ^1.4.2 # D1: block screenshots + hide app-switcher preview on credential screens
+  freerasp: ^6.2.0         # D2/D3: root/jailbreak, debugger, and hooking-framework detection (warn-only)
 
 dev_dependencies:
   flutter_test:

@@ -30,6 +30,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
+import 'package:mubtaath/core/security/screenshot_blocker_mixin.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/language_sync_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
@@ -219,7 +220,8 @@ class OtpVerificationPage extends StatefulWidget {
   State<OtpVerificationPage> createState() => _OtpVerificationPageState();
 }
 
-class _OtpVerificationPageState extends State<OtpVerificationPage> {
+class _OtpVerificationPageState extends State<OtpVerificationPage>
+    with ScreenshotBlockerMixin<OtpVerificationPage> {
   // ── pinput controller — single controller, no FocusNode list needed ────────
   final TextEditingController _pinController = TextEditingController();
 

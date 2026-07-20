@@ -36,6 +36,7 @@ import 'package:flutter/gestures.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
+import 'package:mubtaath/core/security/screenshot_blocker_mixin.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/services/language_sync_service.dart';
@@ -173,7 +174,8 @@ bool get _isIOS =>
     defaultTargetPlatform == TargetPlatform.iOS ||
     defaultTargetPlatform == TargetPlatform.macOS;
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage>
+    with ScreenshotBlockerMixin<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
