@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 
 /// Pushes the user's preferred locale to the backend so push notifications
@@ -20,7 +20,7 @@ class LanguageSyncService {
       await appDio.post('/user/update-language', data: {'locale': locale});
     } catch (e) {
       // Non-fatal — the locale is persisted locally and retried on next sync.
-      debugPrint('[LanguageSync] failed to update server locale: $e');
+      logDebug('[LanguageSync] failed to update server locale: $e');
     }
   }
 }

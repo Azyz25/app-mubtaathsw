@@ -1,7 +1,7 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
-import 'package:flutter/foundation.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 
 /// Polls [globalContext] until `createIrisApiEngine` is defined.
 ///
@@ -23,7 +23,7 @@ Future<void> waitForAgoraWebSdk() async {
   for (var i = 0; i < maxAttempts; i++) {
     final fn = globalContext.getProperty<JSAny?>('createIrisApiEngine'.toJS);
     if (fn != null) {
-      debugPrint('[AgoraWebGuard] createIrisApiEngine ready after ${i * 100} ms.');
+      logDebug('[AgoraWebGuard] createIrisApiEngine ready after ${i * 100} ms.');
       return;
     }
     await Future.delayed(checkInterval);

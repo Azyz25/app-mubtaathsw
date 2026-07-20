@@ -8,6 +8,7 @@ import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/services/api_trust_roots.dart';
 import 'package:mubtaath/core/services/log_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 
 // BASE_URL is injected at compile time via --dart-define=BASE_URL=...
 // When omitted (e.g. a plain `flutter build apk`), the PRODUCTION API is used.
@@ -29,8 +30,8 @@ String _resolveBaseUrl() {
 Dio createDioClient() {
   final baseUrl = _resolveBaseUrl();
 
-  if (kDebugMode && _definedUrl.isEmpty) {
-    debugPrint(
+  if (_definedUrl.isEmpty) {
+    logDebug(
       '[DioClient] BASE_URL not set via --dart-define. '
       'Using fallback: $baseUrl',
     );
@@ -84,7 +85,7 @@ Dio createDioClient() {
           }
         } catch (e) {
           // SecureStorage failure must never block the request on web
-          debugPrint('[DioClient] SecureStorage read failed: $e');
+          logDebug('[DioClient] SecureStorage read failed: $e');
         }
         return handler.next(options);
       },
@@ -131,7 +132,7 @@ Dio createDioClient() {
         requestBody:   true,
         responseBody:  true,
         requestHeader: true,
-        logPrint: (o) => debugPrint('[DIO] $o'),
+        logPrint: (o) => logDebug('[DIO] $o'),
       ),
     );
   }

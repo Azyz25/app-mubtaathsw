@@ -16,7 +16,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geocoding/geocoding.dart' as geo;
 import 'package:geolocator/geolocator.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
@@ -35,12 +34,14 @@ enum QiblaStatus { loading, loaded, permissionDenied, serviceDisabled, error }
 class QiblaState {
   final QiblaStatus status;
   final double      qiblaAngle;
-  final String      locationLabel;
+  final String      cityAr;
+  final String      cityEn;
 
   const QiblaState({
     this.status        = QiblaStatus.loading,
     this.qiblaAngle    = 0.0,
-    this.locationLabel = '',
+    this.cityAr        = '',
+    this.cityEn        = '',
   });
 
   bool get isLoaded        => status == QiblaStatus.loaded;
@@ -75,7 +76,8 @@ class QiblaCubit extends Cubit<QiblaState> {
     return QiblaState(
       status:        QiblaStatus.loaded,
       qiblaAngle:    angle,
-      locationLabel: mem.cityAr.isNotEmpty ? mem.cityAr : mem.cityEn,
+      cityAr:        mem.cityAr,
+      cityEn:        mem.cityEn,
     );
   }
 
@@ -106,7 +108,8 @@ class QiblaCubit extends Cubit<QiblaState> {
       emit(QiblaState(
         status:        QiblaStatus.loaded,
         qiblaAngle:    angle,
-        locationLabel: cached.cityAr.isNotEmpty ? cached.cityAr : cached.cityEn,
+        cityAr:        cached.cityAr,
+        cityEn:        cached.cityEn,
       ));
       unawaited(_refreshLocationInBackground());
       return;
@@ -156,56 +159,26 @@ class QiblaCubit extends Cubit<QiblaState> {
     _lat = pos.latitude;
     _lng = pos.longitude;
 
-    String labelAr = '';
-    String labelEn = '';
-    String isoCode = 'GB';
-
-    // 1. Local geocoding — fast on real devices, fails silently on web/simulators.
-    try {
-      final places = await geo.placemarkFromCoordinates(
-        pos.latitude, pos.longitude,
-      );
-      if (isClosed) return;
-      if (places.isNotEmpty) {
-        final p = places.first;
-        isoCode = p.isoCountryCode ?? 'GB';
-        String local = '';
-        if (p.locality?.isNotEmpty == true) {
-          local = p.locality!;
-        } else if (p.subAdministrativeArea?.isNotEmpty == true) {
-          local = p.subAdministrativeArea!;
-        } else {
-          local = p.administrativeArea ?? '';
-        }
-        labelEn = local;
-        labelAr = local;
-      }
-    } catch (_) {
-      if (isClosed) return;
-    }
-
-    // 2. Nominatim fallback for bilingual names when local geocoding returns empty.
-    if (labelEn.isEmpty) {
-      final (:ar, :en) = await nominatimReverse(pos.latitude, pos.longitude);
-      if (isClosed) return;
-      if (ar.isNotEmpty) labelAr = ar;
-      if (en.isNotEmpty) labelEn = en;
-    }
-
+    // Bilingual geocode — city label in BOTH languages so the UI can show it
+    // in the app's language, not the device/location default.
+    final place = await resolvePlace(pos.latitude, pos.longitude);
     if (isClosed) return;
+    final isoCode = place.iso.isNotEmpty ? place.iso : 'GB';
+
     final coords = Coordinates(pos.latitude, pos.longitude);
     final angle  = Qibla(coords).direction;
 
     await LocationCacheService.instance.write(CachedLocation(
       lat: pos.latitude, lng: pos.longitude, isoCode: isoCode,
-      cityAr: labelAr, cityEn: labelEn,
+      cityAr: place.ar, cityEn: place.en,
     ));
     if (isClosed) return;
 
     emit(QiblaState(
       status:        QiblaStatus.loaded,
       qiblaAngle:    angle,
-      locationLabel: labelAr.isNotEmpty ? labelAr : labelEn,
+      cityAr:        place.ar,
+      cityEn:        place.en,
     ));
   }
 
@@ -1049,26 +1022,33 @@ class _QiblaScreenContent extends StatelessWidget {
                         ],
                       ),
 
-                      if (state.locationLabel.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              LucideIcons.mapPin,
-                              size: 13, color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              state.locationLabel,
-                              style: const TextStyle(
-                                fontFamily: 'Tajawal', fontSize: 12,
-                                color: AppColors.textSecondary,
+                      Builder(builder: (ctx) {
+                        final lang = Localizations.localeOf(ctx).languageCode;
+                        final city = lang == 'ar'
+                            ? (state.cityAr.isNotEmpty ? state.cityAr : state.cityEn)
+                            : (state.cityEn.isNotEmpty ? state.cityEn : state.cityAr);
+                        if (city.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                LucideIcons.mapPin,
+                                size: 13, color: AppColors.textSecondary,
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 4),
+                              Text(
+                                city,
+                                style: const TextStyle(
+                                  fontFamily: 'Tajawal', fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
 
                       const SizedBox(height: 6),
                       Text(

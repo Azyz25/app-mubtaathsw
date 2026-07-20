@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mubtaath/core/services/safe_url_launcher.dart';
+import 'package:mubtaath/core/utils/supported_countries.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
@@ -902,9 +903,9 @@ void _showCountrySwitcher(
         children: [
           Row(
             children: [
-              const Text(
-                'اختر الدولة',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(ctx)!.selectCountry,
+                style: const TextStyle(
                   fontFamily: 'Cairo', fontSize: 16,
                   fontWeight: FontWeight.w800, color: AppColors.darkText,
                 ),
@@ -951,14 +952,19 @@ void _showCountrySwitcher(
                     Text(country.flag, style: const TextStyle(fontSize: 22)),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        country.nameAr,
-                        style: TextStyle(
-                          fontFamily: 'Cairo', fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: selected ? AppColors.primary : AppColors.darkText,
-                        ),
-                      ),
+                      child: Builder(builder: (ctx2) {
+                        final lang =
+                            Localizations.localeOf(ctx2).languageCode;
+                        return Text(
+                          countryDisplayName(country.code, lang,
+                              ar: country.nameAr, en: country.nameEn),
+                          style: TextStyle(
+                            fontFamily: 'Cairo', fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: selected ? AppColors.primary : AppColors.darkText,
+                          ),
+                        );
+                      }),
                     ),
                     if (selected)
                       const Icon(LucideIcons.checkCircle,
@@ -1129,17 +1135,24 @@ class _StudentGuideViewState extends State<_StudentGuideView> {
                                 ),
                                 const SizedBox(width: 6),
                               ],
-                              Text(
-                                state.selectedCountryNameAr.isNotEmpty
-                                    ? state.selectedCountryNameAr
-                                    : '...',
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
+                              Builder(builder: (ctx2) {
+                                final lang =
+                                    Localizations.localeOf(ctx2).languageCode;
+                                final name = countryDisplayName(
+                                  state.selectedCountryCode, lang,
+                                  ar: state.selectedCountryNameAr,
+                                  en: state.selectedCountryNameEn,
+                                );
+                                return Text(
+                                  name.isNotEmpty ? name : '...',
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.darkText,
+                                  ),
+                                );
+                              }),
                               if (state.countries.length > 1) ...[
                                 const SizedBox(width: 3),
                                 const Icon(

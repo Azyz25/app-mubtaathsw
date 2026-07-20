@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mubtaath/core/config/reverb_config.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 
 typedef RoomCountCallback = void Function(String roomId, int count);
 
@@ -38,7 +38,7 @@ class RoomsCountService {
         cancelOnError: true,
       );
     } catch (e) {
-      debugPrint('[RoomsCountService] connect error: $e');
+      logDebug('[RoomsCountService] connect error: $e');
       _scheduleReconnect();
     }
   }
@@ -77,7 +77,7 @@ class RoomsCountService {
         onCount?.call(roomId, count);
       }
     } catch (e) {
-      debugPrint('[RoomsCountService] parse error: $e');
+      logDebug('[RoomsCountService] parse error: $e');
     }
   }
 

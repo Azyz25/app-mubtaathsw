@@ -33,6 +33,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/config/reverb_config.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/services/floating_messages_setting.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
@@ -620,7 +621,7 @@ class RoomCubit extends Cubit<RoomState> {
       _username =
           username.isNotEmpty ? username : (user['fullName'] as String? ?? '');
     } catch (e) {
-      debugPrint('[RoomCubit] readCurrentUser error: $e');
+      logDebug('[RoomCubit] readCurrentUser error: $e');
     }
   }
 
@@ -641,7 +642,7 @@ class RoomCubit extends Cubit<RoomState> {
       emit(next);
       _publishVisibleCount(next, rawCount);
     } catch (e) {
-      debugPrint('[RoomCubit] loadRoom error: $e');
+      logDebug('[RoomCubit] loadRoom error: $e');
       emit(state.copyWith(isLoading: false, hasError: true));
     }
   }
@@ -679,7 +680,7 @@ class RoomCubit extends Cubit<RoomState> {
       final pending = state.messages.where((m) => m.isSending).toList();
       emit(state.copyWith(messages: [...fetched, ...pending]));
     } catch (e) {
-      debugPrint('[RoomCubit] loadMessages error: $e');
+      logDebug('[RoomCubit] loadMessages error: $e');
     }
   }
 
@@ -694,14 +695,14 @@ class RoomCubit extends Cubit<RoomState> {
         cancelOnError: false,
       );
     } catch (e) {
-      debugPrint('[RoomCubit] WS connect error: $e');
+      logDebug('[RoomCubit] WS connect error: $e');
       _scheduleReconnect();
     }
   }
 
   void _onWsDone() {
     if (!isClosed) {
-      debugPrint('[RoomCubit] WS connection closed — reconnecting');
+      logDebug('[RoomCubit] WS connection closed — reconnecting');
       // Remember we were live so pusher:subscription_succeeded re-announces
       // presence once the socket is back. Do NOT tell the backend we left: a
       // transient WebSocket drop must never mark a still-connected user as gone
@@ -918,7 +919,7 @@ class RoomCubit extends Cubit<RoomState> {
       case 'pusher:subscription_succeeded':
         final succCh = payload['channel'] as String? ?? '';
         if (succCh != 'private-rooms.$_roomId') return;
-        debugPrint('[RoomCubit] ✓ Subscribed to $succCh');
+        logDebug('[RoomCubit] ✓ Subscribed to $succCh');
         // Only re-announce presence after a reconnect drop, not on first load.
         if (_wasLiveOnDisconnect) {
           _wasLiveOnDisconnect = false;
@@ -929,7 +930,7 @@ class RoomCubit extends Cubit<RoomState> {
         }
 
       case 'pusher:subscription_error':
-        debugPrint('[RoomCubit] Subscription error: ${payload['data']}');
+        logDebug('[RoomCubit] Subscription error: ${payload['data']}');
         // Back-off 3 s and retry — socket_id is still valid after auth failure.
         Timer(const Duration(seconds: 3), () {
           if (!isClosed && _socketId != null) _subscribeToChannel();
@@ -963,12 +964,12 @@ class RoomCubit extends Cubit<RoomState> {
         'data': {'auth': auth, 'channel': ch},
       }));
     } catch (e) {
-      debugPrint('[RoomCubit] WS subscribe error: $e');
+      logDebug('[RoomCubit] WS subscribe error: $e');
     }
   }
 
   void _onWsError(dynamic error) {
-    debugPrint('[RoomCubit] WS error: $error');
+    logDebug('[RoomCubit] WS error: $error');
     // See _onWsDone: a transient socket error must never auto-leave the room
     // while the user is still in the Agora channel. Flag for presence
     // re-announce and reconnect — never notify the backend of a leave here.
@@ -1036,7 +1037,7 @@ class RoomCubit extends Cubit<RoomState> {
           _publishVisibleCount(next, rawCount);
         }
       } catch (e) {
-        debugPrint('[RoomCubit] attendee refresh error: $e');
+        logDebug('[RoomCubit] attendee refresh error: $e');
       }
     });
   }
@@ -1101,7 +1102,7 @@ class RoomCubit extends Cubit<RoomState> {
 
   void _finishRoomEntry({String? debugReason}) {
     if (debugReason != null) {
-      debugPrint('[RoomCubit] joinRoom() — continuing after $debugReason.');
+      logDebug('[RoomCubit] joinRoom() — continuing after $debugReason.');
     }
 
     emit(state.copyWith(
@@ -1116,11 +1117,11 @@ class RoomCubit extends Cubit<RoomState> {
 
   // ── Public actions ─────────────────────────────────────────────────────────
   Future<void> joinRoom() async {
-    debugPrint('[RoomCubit] joinRoom() — START. roomId=$_roomId');
+    logDebug('[RoomCubit] joinRoom() — START. roomId=$_roomId');
 
     // 1. Request microphone permission
     final permStatus = await Permission.microphone.request();
-    debugPrint('[RoomCubit] joinRoom() — mic permission: ${permStatus.name}');
+    logDebug('[RoomCubit] joinRoom() — mic permission: ${permStatus.name}');
     if (!permStatus.isGranted) {
       emit(state.copyWith(
         audioErrorMessage: 'Microphone permission denied',
@@ -1148,31 +1149,19 @@ class RoomCubit extends Cubit<RoomState> {
       //    an AUDIENCE (role 2) token with NO publish-audio privilege, so the
       //    moment they unmute Agora silently rejects the mic publish and nobody
       //    hears them. Always request publish privileges up front.
-      debugPrint('[RoomCubit] joinRoom() — fetching Agora token...');
+      logDebug('[RoomCubit] joinRoom() — fetching Agora token...');
       final tokenResp = await appDio.post('/agora/token', data: {
         'channel_id': _roomId,
         'role': 1,
       });
 
-      // ── UID TRACE ──────────────────────────────────────────────────────────
-      debugPrint(
-          '[UID_TRACE][RoomCubit] STEP1 tokenResp.data = ${tokenResp.data}');
-      debugPrint(
-          '[UID_TRACE][RoomCubit] STEP1 tokenResp.data runtimeType = ${tokenResp.data?.runtimeType}');
-
       final tokenData = tokenResp.data['data'] as Map<String, dynamic>;
-      debugPrint('[UID_TRACE][RoomCubit] STEP2 tokenData = $tokenData');
-      debugPrint(
-          '[UID_TRACE][RoomCubit] STEP2 tokenData[uid] = ${tokenData['uid']} (type=${tokenData['uid']?.runtimeType})');
-
       final token = tokenData['token'] as String;
       // The backend mints the token for a specific uid — Agora rejects the token
       // if joinChannel is called with a different uid (including the default 0).
       final uid = (tokenData['uid'] as num?)?.toInt() ?? 0;
-      debugPrint('[UID_TRACE][RoomCubit] STEP3 extracted uid = $uid');
-      // ── END UID TRACE ──────────────────────────────────────────────────────
 
-      debugPrint(
+      logDebug(
         '[RoomCubit] joinRoom() — token received. '
         'prefix=${token.length > 12 ? "${token.substring(0, 12)}..." : token}, '
         'uid=$uid',
@@ -1180,37 +1169,35 @@ class RoomCubit extends Cubit<RoomState> {
 
       try {
         // 5. Initialize Agora engine (singleton, safe to call multiple times)
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — calling AgoraService.initialize()...');
         await AgoraService.instance.initialize();
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — AgoraService.initialize() completed.');
 
         // 6. Subscribe to Agora events (update UI on user joined/left)
         if (_agoraSub == null) {
           _agoraSub = AgoraService.instance.events.listen(_onAgoraEvent);
-          debugPrint(
+          logDebug(
               '[RoomCubit] joinRoom() — subscribed to Agora event stream.');
         }
 
         // 7. Join the Agora channel
-        debugPrint(
-            '[UID_TRACE][RoomCubit] STEP4 passing uid=$uid to AgoraService.joinChannel()');
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — calling AgoraService.joinChannel() with uid=$uid...');
         await AgoraService.instance.joinChannel(
           channelId: _roomId,
           token: token,
           uid: uid,
         );
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — AgoraService.joinChannel() call returned. '
             'Waiting for onJoinChannelSuccess...');
 
         // 8. Sync initial mute state with native engine.
         // The state starts as isMuted=true but Agora defaults to unmuted — align them.
         await AgoraService.instance.muteLocalAudio(mute: state.isMuted);
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — initial mute synced (isMuted=${state.isMuted}).');
 
         // 8b. Sync the audio output route so the engine matches our state
@@ -1218,10 +1205,10 @@ class RoomCubit extends Cubit<RoomState> {
         await AgoraService.instance.toggleSpeakerphone(state.isSpeakerphoneOn);
       } catch (e, st) {
         if (!_isIgnorableAgoraJoinIssue(e)) {
-          debugPrint('[RoomCubit] joinRoom() — Agora setup failed: $e\n$st');
+          logDebug('[RoomCubit] joinRoom() — Agora setup failed: $e\n$st');
           rethrow;
         }
-        debugPrint(
+        logDebug(
             '[RoomCubit] joinRoom() — ignored non-blocking Agora warning: $e');
       }
 
@@ -1229,7 +1216,7 @@ class RoomCubit extends Cubit<RoomState> {
       // 10. Start heartbeat.
       // 11. Refresh attendees so the local user appears in the grid right away.
       _finishRoomEntry();
-      debugPrint('[RoomCubit] joinRoom() — DONE. Heartbeat started.');
+      logDebug('[RoomCubit] joinRoom() — DONE. Heartbeat started.');
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
@@ -1252,13 +1239,13 @@ class RoomCubit extends Cubit<RoomState> {
         return;
       }
 
-      debugPrint('[RoomCubit] joinRoom() — DioException: $msg');
+      logDebug('[RoomCubit] joinRoom() — DioException: $msg');
       emit(state.copyWith(
         isConnectingAudio: false,
         audioErrorMessage: msg.isNotEmpty ? msg : 'Token fetch failed',
       ));
     } catch (e, st) {
-      debugPrint('[RoomCubit] joinRoom() — unexpected error: $e\n$st');
+      logDebug('[RoomCubit] joinRoom() — unexpected error: $e\n$st');
       emit(state.copyWith(
         isConnectingAudio: false,
         audioErrorMessage: e.toString(),
@@ -1270,7 +1257,7 @@ class RoomCubit extends Cubit<RoomState> {
     try {
       await appDio.post('/rooms/$_roomId/join');
     } catch (e) {
-      debugPrint('[RoomCubit] join notify error: $e');
+      logDebug('[RoomCubit] join notify error: $e');
     }
   }
 
@@ -1288,7 +1275,7 @@ class RoomCubit extends Cubit<RoomState> {
   void clearChatNotice() => emit(state.copyWith(chatNoticeMessage: null));
 
   Future<void> leaveRoom() async {
-    debugPrint(
+    logDebug(
         '[RoomCubit] leaveRoom() — leaving channel and notifying backend.');
     _stopHeartbeat();
     emit(state.copyWith(view: RoomView.detail));
@@ -1298,7 +1285,7 @@ class RoomCubit extends Cubit<RoomState> {
 
     // Notify backend
     await _notifyLeave(); // tells server to broadcast ParticipantUpdated to all clients
-    debugPrint('[RoomCubit] leaveRoom() — done.');
+    logDebug('[RoomCubit] leaveRoom() — done.');
   }
 
   // ── Forced eviction (admin kick / temp-ban / global-ban) ───────────────────
@@ -1309,12 +1296,12 @@ class RoomCubit extends Cubit<RoomState> {
   // BlocListener then shows the notice and routes the user home, and
   // RoomCubit.close() releases the native engine on the way out.
   Future<void> _evictFromRoom() async {
-    debugPrint('[RoomCubit] _evictFromRoom() — admin eviction, tearing down audio.');
+    logDebug('[RoomCubit] _evictFromRoom() — admin eviction, tearing down audio.');
     _stopHeartbeat();
     try {
       await AgoraService.instance.leaveChannel();
     } catch (e) {
-      debugPrint('[RoomCubit] eviction leaveChannel error: $e');
+      logDebug('[RoomCubit] eviction leaveChannel error: $e');
     }
   }
 
@@ -1322,13 +1309,13 @@ class RoomCubit extends Cubit<RoomState> {
     try {
       await appDio.post('/rooms/$_roomId/leave');
     } catch (e) {
-      debugPrint('[RoomCubit] leave notify error: $e');
+      logDebug('[RoomCubit] leave notify error: $e');
     }
   }
 
   Future<void> toggleMute() async {
     final newMuted = !state.isMuted;
-    debugPrint(
+    logDebug(
         '[RoomCubit] toggleMute() — isMuted: ${state.isMuted} → $newMuted');
     await AgoraService.instance.muteLocalAudio(mute: newMuted);
     // Reflect our own live mic state on our own grid tile immediately (Agora's
@@ -1338,7 +1325,7 @@ class RoomCubit extends Cubit<RoomState> {
         .toList();
     emit(state.copyWith(isMuted: newMuted, attendees: attendees));
     unawaited(_playMicSfx(newMuted));
-    debugPrint('[RoomCubit] toggleMute() — done. UI state updated.');
+    logDebug('[RoomCubit] toggleMute() — done. UI state updated.');
   }
 
   // Short confirmation blip on every mic toggle (Teams/iPhone-call style) so
@@ -1351,7 +1338,7 @@ class RoomCubit extends Cubit<RoomState> {
       );
       await _sfxPlayer.play();
     } catch (e) {
-      debugPrint('[RoomCubit] mic sfx error: $e');
+      logDebug('[RoomCubit] mic sfx error: $e');
     }
   }
 
@@ -1373,7 +1360,7 @@ class RoomCubit extends Cubit<RoomState> {
   Future<void> toggleGhostMode() async {
     if (!isModerator) return;
     final hidden = !state.isGhostMode;
-    debugPrint('[RoomCubit] toggleGhostMode() — hidden=$hidden');
+    logDebug('[RoomCubit] toggleGhostMode() — hidden=$hidden');
     final hiddenIds = Set<String>.from(state.hiddenUserIds);
     hidden ? hiddenIds.add(_userId) : hiddenIds.remove(_userId);
     final next = state.copyWith(
@@ -1387,14 +1374,14 @@ class RoomCubit extends Cubit<RoomState> {
     } catch (e) {
       // Keep the optimistic local state — visibility is non-critical and the
       // next toggle retries the sync.
-      debugPrint('[RoomCubit] toggleGhostMode sync error: $e');
+      logDebug('[RoomCubit] toggleGhostMode sync error: $e');
     }
   }
 
   // ── Audio output route (loudspeaker ⇄ earpiece) ────────────────────────────
   Future<void> setSpeakerphone(bool enabled) async {
     if (state.isSpeakerphoneOn == enabled) return;
-    debugPrint('[RoomCubit] setSpeakerphone($enabled)');
+    logDebug('[RoomCubit] setSpeakerphone($enabled)');
     await AgoraService.instance.toggleSpeakerphone(enabled);
     emit(state.copyWith(isSpeakerphoneOn: enabled));
   }
@@ -1455,7 +1442,7 @@ class RoomCubit extends Cubit<RoomState> {
       // On success, the server broadcasts MessageSent which deduplicates the
       // optimistic placeholder (see _onWsMessage > MessageSent).
     } catch (e) {
-      debugPrint('[RoomCubit] sendMessage error: $e');
+      logDebug('[RoomCubit] sendMessage error: $e');
       if (e is DioException && e.response?.statusCode == 403) {
         final data = e.response?.data;
         final code = data is Map<String, dynamic> ? data['code'] : null;
@@ -1493,7 +1480,7 @@ class RoomCubit extends Cubit<RoomState> {
     try {
       await appDio.delete('/rooms/$_roomId/messages/$messageId');
     } catch (e) {
-      debugPrint('[RoomCubit] deleteMessage error: $e');
+      logDebug('[RoomCubit] deleteMessage error: $e');
       emit(state.copyWith(chatNoticeMessage: 'تعذر حذف الرسالة'));
     }
   }
@@ -1505,7 +1492,7 @@ class RoomCubit extends Cubit<RoomState> {
       emit(state.copyWith(
           chatNoticeMessage: 'تم حظر المستخدم من الكتابة في الشات'));
     } catch (e) {
-      debugPrint('[RoomCubit] muteUserFromChat error: $e');
+      logDebug('[RoomCubit] muteUserFromChat error: $e');
       emit(state.copyWith(chatNoticeMessage: 'تعذر حظر المستخدم من الشات'));
     }
   }
@@ -1521,7 +1508,7 @@ class RoomCubit extends Cubit<RoomState> {
           chatNoticeMessage: 'تم طرد المستخدم مؤقتاً من الغرفة'));
       _scheduleAttendeeRefresh();
     } catch (e) {
-      debugPrint('[RoomCubit] tempBanUser error: $e');
+      logDebug('[RoomCubit] tempBanUser error: $e');
       emit(state.copyWith(chatNoticeMessage: 'تعذر طرد المستخدم مؤقتاً'));
     }
   }
@@ -1533,7 +1520,7 @@ class RoomCubit extends Cubit<RoomState> {
       emit(state.copyWith(chatNoticeMessage: 'تم حظر المستخدم من كل الرومات'));
       _scheduleAttendeeRefresh();
     } catch (e) {
-      debugPrint('[RoomCubit] globalBanUser error: $e');
+      logDebug('[RoomCubit] globalBanUser error: $e');
       emit(state.copyWith(chatNoticeMessage: 'تعذر حظر المستخدم'));
     }
   }
@@ -1544,25 +1531,25 @@ class RoomCubit extends Cubit<RoomState> {
 
     switch (event) {
       case AgoraJoinSuccess(:final uid):
-        debugPrint('[RoomCubit] Agora join success: $uid');
+        logDebug('[RoomCubit] Agora join success: $uid');
       // Optionally emit a success indicator or just stay connected
 
       case AgoraUserJoined(:final uid):
-        debugPrint('[RoomCubit] User joined: $uid');
+        logDebug('[RoomCubit] User joined: $uid');
       // Could update speakers list if tracking remote UIDs
 
       case AgoraUserOffline(:final uid):
-        debugPrint('[RoomCubit] User offline: $uid');
+        logDebug('[RoomCubit] User offline: $uid');
       // Could remove from speakers list
 
       case AgoraLeftChannel():
-        debugPrint('[RoomCubit] Left channel');
+        logDebug('[RoomCubit] Left channel');
       // This happens when we call leaveChannel
 
       case AgoraError(:final code):
-        debugPrint('[RoomCubit] Agora error: $code');
+        logDebug('[RoomCubit] Agora error: $code');
         if (_isIgnorableAgoraErrorCode(code)) {
-          debugPrint('[RoomCubit] Ignoring non-blocking Agora code: ${code.name}');
+          logDebug('[RoomCubit] Ignoring non-blocking Agora code: ${code.name}');
           return;
         }
         emit(state.copyWith(

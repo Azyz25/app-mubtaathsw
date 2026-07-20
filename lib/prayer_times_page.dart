@@ -13,7 +13,6 @@ import 'dart:async';
 import 'package:adhan/adhan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geocoding/geocoding.dart' as geo;
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -282,13 +281,6 @@ String _computeHijriDate(DateTime g, {bool arabic = true}) {
   return '$hD $monthName $hY';
 }
 
-String _bestPlacemarkLabel(geo.Placemark p) {
-  if (p.locality?.isNotEmpty == true)              return p.locality!;
-  if (p.subAdministrativeArea?.isNotEmpty == true) return p.subAdministrativeArea!;
-  if (p.administrativeArea?.isNotEmpty == true)    return p.administrativeArea!;
-  return '';
-}
-
 // =============================================================================
 // SECTION 5 — CUBIT  (coords cached — timer never re-fetches GPS)
 // =============================================================================
@@ -417,30 +409,13 @@ class PrayerCubit extends Cubit<PrayerState> {
     _lat = pos.latitude;
     _lng = pos.longitude;
 
-    // 1. Local geocoding — fast on real devices, fails silently on web/simulators.
-    try {
-      final places = await geo.placemarkFromCoordinates(_lat!, _lng!);
-      if (isClosed) return false;
-      if (places.isNotEmpty) {
-        final p = places.first;
-        _isoCode = p.isoCountryCode ?? 'GB';
-        final label = _bestPlacemarkLabel(p);
-        _cityEn = label;
-        _cityAr = label;
-      }
-    } catch (_) {
-      if (isClosed) return false;
-    }
-
-    // 2. Nominatim fallback — fires when local geocoding returns empty
-    //    (web, simulators, or devices without the geocoding service).
-    //    Returns bilingual "City، Country" / "City, Country" labels.
-    if (_cityEn.isEmpty) {
-      final (:ar, :en) = await nominatimReverse(_lat!, _lng!);
-      if (isClosed) return false;
-      if (ar.isNotEmpty) _cityAr = ar;
-      if (en.isNotEmpty) _cityEn = en;
-    }
+    // Bilingual geocode — resolves the city in BOTH languages so the label
+    // follows the app's language, not the device/location default.
+    final place = await resolvePlace(_lat!, _lng!);
+    if (isClosed) return false;
+    if (place.iso.isNotEmpty) _isoCode = place.iso;
+    if (place.ar.isNotEmpty) _cityAr = place.ar;
+    if (place.en.isNotEmpty) _cityEn = place.en;
     if (isClosed) return false;
 
     await LocationCacheService.instance.write(CachedLocation(
@@ -475,28 +450,13 @@ class PrayerCubit extends Cubit<PrayerState> {
 
       _lat = pos.latitude;
       _lng = pos.longitude;
-      _cityAr = '';
-      _cityEn = '';
 
-      try {
-        final places = await geo.placemarkFromCoordinates(_lat!, _lng!);
-        if (isClosed) return;
-        if (places.isNotEmpty) {
-          final p = places.first;
-          _isoCode = p.isoCountryCode ?? _isoCode;
-          final label = _bestPlacemarkLabel(p);
-          _cityEn = label;
-          _cityAr = label;
-        }
-      } catch (_) {
-        if (isClosed) return;
-      }
-      if (_cityEn.isEmpty) {
-        final (:ar, :en) = await nominatimReverse(_lat!, _lng!);
-        if (isClosed) return;
-        if (ar.isNotEmpty) _cityAr = ar;
-        if (en.isNotEmpty) _cityEn = en;
-      }
+      // Bilingual geocode (see _fetchAndCacheLocation).
+      final place = await resolvePlace(_lat!, _lng!);
+      if (isClosed) return;
+      if (place.iso.isNotEmpty) _isoCode = place.iso;
+      _cityAr = place.ar;
+      _cityEn = place.en;
       if (isClosed) return;
 
       await LocationCacheService.instance.write(CachedLocation(

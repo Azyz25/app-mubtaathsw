@@ -46,6 +46,7 @@ import 'package:mubtaath/core/widgets/post_signup_sheets.dart';
 import 'package:mubtaath/core/widgets/shared_widgets.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
 import 'package:mubtaath/core/utils/avatar_utils.dart';
 
@@ -251,7 +252,7 @@ class HomeCubit extends Cubit<HomeState> {
         userCountryFlag:   user['countryFlag']   as String? ?? '',
       ));
     } catch (e) {
-      debugPrint('[HomeCubit] user fetch error: $e');
+      logDebug('[HomeCubit] user fetch error: $e');
       // Non-fatal — proceed with empty user data; rooms still load
     }
     await _loadRooms();
@@ -268,7 +269,7 @@ class HomeCubit extends Cubit<HomeState> {
       ));
       _statusCubit.seedCounts({for (final r in rooms) r.id: r.listenerCount});
     } catch (e) {
-      debugPrint('[HomeCubit] fetch error: $e');
+      logDebug('[HomeCubit] fetch error: $e');
       emit(state.copyWith(isLoading: false, hasError: true));
     }
   }

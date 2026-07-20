@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mubtaath/core/config/reverb_config.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 
 typedef NotificationPayloadCallback = void Function(Map<String, dynamic> payload);
 
@@ -48,7 +48,7 @@ class ReverbService {
         cancelOnError: true,
       );
     } catch (e) {
-      debugPrint('[ReverbService] connect error: $e');
+      logDebug('[ReverbService] connect error: $e');
       _scheduleReconnect();
     }
   }
@@ -84,7 +84,7 @@ class ReverbService {
 
       onNotification?.call(data);
     } catch (e) {
-      debugPrint('[ReverbService] message parse error: $e');
+      logDebug('[ReverbService] message parse error: $e');
     }
   }
 

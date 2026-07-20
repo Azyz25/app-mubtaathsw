@@ -38,6 +38,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl_phone_field/countries.dart' show countries, Country;
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/widgets/country_picker_sheet.dart';
@@ -144,8 +145,8 @@ class RegisterCubit extends Cubit<RegisterState> {
       final first  = (errors?.values.first as List?)?.first as String?;
       emit(RegisterFailure(first ?? data?['message'] as String? ?? 'registerError'));
     } catch (e, stackTrace) {
-      debugPrint('[RegisterCubit] UNEXPECTED ERROR: $e');
-      debugPrint(stackTrace.toString());
+      logDebug('[RegisterCubit] UNEXPECTED ERROR: $e');
+      logDebug(stackTrace.toString());
       emit(const RegisterFailure('genericError'));
     }
   }

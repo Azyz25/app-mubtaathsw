@@ -23,6 +23,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -330,7 +331,7 @@ class NotifCubit extends Cubit<NotifState> {
       try {
         emit(state.copyWith(items: [NotifModel.fromApi(payload), ...state.items]));
       } catch (e) {
-        debugPrint('[NotifCubit] socket parse error: $e');
+        logDebug('[NotifCubit] socket parse error: $e');
       }
     };
     _reverb.connect();

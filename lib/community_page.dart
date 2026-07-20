@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
 import 'package:mubtaath/core/widgets/mubtaath_refresh.dart';
 import 'package:mubtaath/core/bloc/room_status_cubit.dart';
@@ -225,7 +226,7 @@ class CommunityCubit extends Cubit<CommunityState> {
       ));
       _statusCubit.seedCounts({for (final r in rooms) r.id: r.listenerCount});
     } catch (e) {
-      debugPrint('[CommunityCubit] fetch error: $e');
+      logDebug('[CommunityCubit] fetch error: $e');
       emit(state.copyWith(isLoading: false, hasError: true));
     }
   }

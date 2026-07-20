@@ -8,13 +8,14 @@
 //     prayer page loads, then refreshed on the next open / new day.
 //   • Timezone-aware (TZDateTime) so times stay correct across DST.
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:mubtaath/core/utils/debug_log.dart';
 
 /// One scheduled prayer notification (title/body already localised).
 class PrayerNotif {
@@ -191,7 +192,7 @@ class PrayerNotificationService {
       } catch (e) {
         // Exact alarms may be blocked — fall back to an inexact schedule so
         // the notification still fires (a few minutes late at worst).
-        if (kDebugMode) debugPrint('zonedSchedule failed, retrying inexact: $e');
+        logDebug('zonedSchedule failed, retrying inexact: $e');
         await _plugin.zonedSchedule(
           item.id,
           item.title,

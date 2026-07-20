@@ -37,6 +37,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/bloc/language_cubit.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'package:mubtaath/core/services/language_sync_service.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/services/social_auth_service.dart';
@@ -109,8 +110,8 @@ class AuthCubit extends Cubit<AuthState> {
       final msg = e.response?.data?['message'] as String?;
       emit(AuthFailure(msg ?? 'loginError'));
     } catch (e, stackTrace) {
-      debugPrint('[AuthCubit] UNEXPECTED ERROR: $e');
-      debugPrint(stackTrace.toString());
+      logDebug('[AuthCubit] UNEXPECTED ERROR: $e');
+      logDebug(stackTrace.toString());
       emit(const AuthFailure('genericError'));
     }
   }

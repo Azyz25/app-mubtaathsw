@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mubtaath/core/auth_notifier.dart';
 import 'package:mubtaath/core/l10n/app_localizations.dart';
+import 'package:mubtaath/core/utils/supported_countries.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
 import 'package:mubtaath/core/services/secure_storage_service.dart';
 import 'package:mubtaath/core/theme/app_colors.dart';
@@ -56,8 +57,9 @@ class UserModel {
     this.isPremium = false,
   });
 
-  String localizedCountry(String lang) =>
-      lang == 'ar' ? countryNameAr : countryNameEn;
+  String localizedCountry(String lang) => countryDisplayName(
+        countryCode, lang, ar: countryNameAr, en: countryNameEn,
+      );
 
   UserModel copyWith({
     String? fullName,

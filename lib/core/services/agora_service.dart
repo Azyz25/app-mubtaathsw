@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mubtaath/core/config/agora_config.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'agora_web_guard_stub.dart'
     if (dart.library.html) 'agora_web_guard_web.dart';
 
@@ -91,11 +92,11 @@ class AgoraService {
   /// Safe to call multiple times — subsequent calls are no-ops.
   Future<void> initialize() async {
     if (_engine != null) {
-      debugPrint('[AgoraService] initialize() — engine already running, skipping.');
+      logDebug('[AgoraService] initialize() — engine already running, skipping.');
       return;
     }
 
-    debugPrint(
+    logDebug(
       '[AgoraService] initialize() — START. '
       'appId=${agoraAppId.isNotEmpty ? "${agoraAppId.substring(0, 8)}..." : "EMPTY ⚠️"}',
     );
@@ -116,7 +117,7 @@ class AgoraService {
     }
 
     _engine = createAgoraRtcEngine();
-    debugPrint('[AgoraService] initialize() — RtcEngine instance created.');
+    logDebug('[AgoraService] initialize() — RtcEngine instance created.');
 
     await _engine!.initialize(
       const RtcEngineContext(
@@ -124,33 +125,33 @@ class AgoraService {
         channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
       ),
     );
-    debugPrint('[AgoraService] initialize() — RtcEngine.initialize() succeeded.');
+    logDebug('[AgoraService] initialize() — RtcEngine.initialize() succeeded.');
 
     _engine!.registerEventHandler(
       RtcEngineEventHandler(
         onJoinChannelSuccess: (connection, elapsed) {
-          debugPrint('[AgoraService] ✅ onJoinChannelSuccess — uid=${connection.localUid} elapsed=${elapsed}ms');
+          logDebug('[AgoraService] ✅ onJoinChannelSuccess — uid=${connection.localUid} elapsed=${elapsed}ms');
           _eventCtrl.add(AgoraJoinSuccess(connection.localUid ?? 0));
         },
         onUserJoined: (connection, remoteUid, elapsed) {
-          debugPrint('[AgoraService] onUserJoined — remoteUid=$remoteUid');
+          logDebug('[AgoraService] onUserJoined — remoteUid=$remoteUid');
           _eventCtrl.add(AgoraUserJoined(remoteUid));
         },
         onUserOffline: (connection, remoteUid, reason) {
-          debugPrint('[AgoraService] onUserOffline — remoteUid=$remoteUid reason=$reason');
+          logDebug('[AgoraService] onUserOffline — remoteUid=$remoteUid reason=$reason');
           _eventCtrl.add(AgoraUserOffline(remoteUid));
         },
         // Live mic on/off for remote users → updates the grid badge instantly.
         onUserMuteAudio: (connection, remoteUid, muted) {
-          debugPrint('[AgoraService] onUserMuteAudio — uid=$remoteUid muted=$muted');
+          logDebug('[AgoraService] onUserMuteAudio — uid=$remoteUid muted=$muted');
           _eventCtrl.add(AgoraMuteUpdate(remoteUid, muted));
         },
         onLeaveChannel: (connection, stats) {
-          debugPrint('[AgoraService] onLeaveChannel — txBytes=${stats.txBytes}');
+          logDebug('[AgoraService] onLeaveChannel — txBytes=${stats.txBytes}');
           _eventCtrl.add(AgoraLeftChannel());
         },
         onError: (code, msg) {
-          debugPrint('[AgoraService] ❌ onError — code=${code.name} msg=$msg');
+          logDebug('[AgoraService] ❌ onError — code=${code.name} msg=$msg');
           _eventCtrl.add(AgoraError(code));
         },
         onAudioVolumeIndication: (connection, speakers, speakerNumber, totalVolume) {
@@ -172,7 +173,7 @@ class AgoraService {
         },
       ),
     );
-    debugPrint('[AgoraService] initialize() — event handler registered.');
+    logDebug('[AgoraService] initialize() — event handler registered.');
 
     await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine!.enableAudio();
@@ -188,23 +189,23 @@ class AgoraService {
 
     // ── DEBUG ONLY: in-ear monitoring ──────────────────────────────────────────
     // Plays your own mic back through your earphones so you can confirm the mic
-    // and Agora engine are alive without needing a second device.
+    // and Agora engine are alive without needing a second device. Gated behind
+    // kDebugMode below, so this never activates in a release build.
     //
     // ⚠️  REQUIRES EARPHONES — on speaker you will get loud audio feedback.
     // ⚠️  enableLoopbackRecording() is Windows/macOS desktop only and does NOT
     //     exist on Android/iOS. enableInEarMonitoring is the correct mobile API.
-    // ✂️  Remove or set enabled: false before releasing to production.
     if (kDebugMode) {
       await _engine!.enableInEarMonitoring(
         enabled: true,
         includeAudioFilters:
             EarMonitoringFilterType.earMonitoringFilterNone,
       );
-      debugPrint('[AgoraService] initialize() — ⚠️  IN-EAR MONITORING ON (debug only). '
+      logDebug('[AgoraService] initialize() — ⚠️  IN-EAR MONITORING ON (debug only). '
           'Plug in earphones to hear your own mic.');
     }
 
-    debugPrint('[AgoraService] initialize() — COMPLETE. Role=Broadcaster, Audio=enabled.');
+    logDebug('[AgoraService] initialize() — COMPLETE. Role=Broadcaster, Audio=enabled.');
   }
 
   /// Joins an Agora channel.
@@ -217,10 +218,7 @@ class AgoraService {
     required String token,
     int uid = 0,
   }) async {
-    // ── UID TRACE ──────────────────────────────────────────────────────────
-    debugPrint('[UID_TRACE][AgoraService] STEP5 joinChannel() received uid=$uid (type=${uid.runtimeType})');
-    // ── END UID TRACE ──────────────────────────────────────────────────────
-    debugPrint(
+    logDebug(
       '[AgoraService] joinChannel() — START. '
       'channelId=$channelId, uid=$uid, '
       'tokenPrefix=${token.isEmpty ? "EMPTY (no-cert mode)" : "${token.substring(0, token.length.clamp(0, 12))}..."}',
@@ -228,7 +226,6 @@ class AgoraService {
     if (!isInitialized) {
       throw StateError('Call initialize() before joinChannel().');
     }
-    debugPrint('[UID_TRACE][AgoraService] STEP6 calling _engine!.joinChannel() uid=$uid');
     await _engine!.joinChannel(
       token: token.isEmpty ? '' : token,
       channelId: channelId,
@@ -240,7 +237,7 @@ class AgoraService {
         autoSubscribeAudio: true,
       ),
     );
-    debugPrint('[AgoraService] joinChannel() — native joinChannel() dispatched. '
+    logDebug('[AgoraService] joinChannel() — native joinChannel() dispatched. '
         'Awaiting onJoinChannelSuccess callback...');
   }
 
@@ -253,12 +250,12 @@ class AgoraService {
 
   /// Mutes or unmutes the local microphone track.
   Future<void> muteLocalAudio({required bool mute}) async {
-    debugPrint(
+    logDebug(
       '[AgoraService] muteLocalAudio(mute=$mute) — '
       'engine=${_engine != null ? "ready" : "NULL — call will be skipped ⚠️"}',
     );
     await _engine?.muteLocalAudioStream(mute);
-    debugPrint('[AgoraService] muteLocalAudio(mute=$mute) — native call completed.');
+    logDebug('[AgoraService] muteLocalAudio(mute=$mute) — native call completed.');
   }
 
   /// Routes audio output to the speakerphone (true) or earpiece (false).

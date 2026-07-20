@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mubtaath/core/services/agora_service.dart';
 import 'package:mubtaath/core/services/dio_client.dart';
+import 'package:mubtaath/core/utils/debug_log.dart';
 import 'audio_room_state.dart';
 
 class AudioRoomCubit extends Cubit<AudioRoomState> {
@@ -37,20 +37,11 @@ class AudioRoomCubit extends Cubit<AudioRoomState> {
       final tokenResp = await appDio.post('/agora/token', data: {
         'channel_id': channelId,
       });
-      // ── UID TRACE ──────────────────────────────────────────────────────────
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP1 tokenResp.data = ${tokenResp.data}');
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP1 tokenResp.data runtimeType = ${tokenResp.data?.runtimeType}');
-
       final tokenData = tokenResp.data['data'] as Map<String, dynamic>;
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP2 tokenData = $tokenData');
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP2 tokenData[uid] = ${tokenData['uid']} (type=${tokenData['uid']?.runtimeType})');
-
       final token = tokenData['token'] as String;
       // The token is generated for this specific uid — joinChannel MUST use
       // the same uid or Agora returns errInvalidToken.
       final uid = (tokenData['uid'] as num?)?.toInt() ?? 0;
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP3 extracted uid = $uid');
-      // ── END UID TRACE ──────────────────────────────────────────────────────
 
       // ── Step 3: initialise Agora engine and enter the channel ─────────────
       // StateError here means the SDK did not load (web race) or the App ID is
@@ -59,7 +50,7 @@ class AudioRoomCubit extends Cubit<AudioRoomState> {
       try {
         await _agora.initialize();
       } on StateError catch (e) {
-        debugPrint('[AudioRoomCubit] Agora init failed: $e');
+        logDebug('[AudioRoomCubit] Agora init failed: $e');
         emit(state.copyWith(
           status: AudioRoomStatus.warning,
           errorMessage: e.toString(),
@@ -68,7 +59,6 @@ class AudioRoomCubit extends Cubit<AudioRoomState> {
       }
 
       _sub ??= _agora.events.listen(_onEvent);
-      debugPrint('[UID_TRACE][AudioRoomCubit] STEP4 passing uid=$uid to _agora.joinChannel()');
       await _agora.joinChannel(channelId: channelId, token: token, uid: uid);
       // Apply mic / speaker preferences immediately after joining.
       await _agora.muteLocalAudio(mute: state.isMuted);
