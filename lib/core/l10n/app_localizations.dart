@@ -353,7 +353,7 @@ abstract class AppLocalizations {
   /// No description provided for @phoneHint.
   ///
   /// In ar, this message translates to:
-  /// **'+966XXXXXXXXX'**
+  /// **'+966XXXXXXXXX (اختياري)'**
   String get phoneHint;
 
   /// No description provided for @send.

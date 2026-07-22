@@ -146,7 +146,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phone => 'Phone number';
 
   @override
-  String get phoneHint => '+966XXXXXXXXX';
+  String get phoneHint => '+966XXXXXXXXX (optional)';
 
   @override
   String get send => 'Send';

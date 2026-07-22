@@ -146,7 +146,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get phone => 'رقم الجوال';
 
   @override
-  String get phoneHint => '+966XXXXXXXXX';
+  String get phoneHint => '+966XXXXXXXXX (اختياري)';
 
   @override
   String get send => 'إرسال';

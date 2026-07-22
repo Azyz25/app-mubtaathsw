@@ -123,14 +123,18 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     emit(const RegisterLoading());
 
-    // Full E.164-style number: dial code + local digits, e.g. +966501234567.
-    final fullPhone = '+${phoneCountry!.dialCode}${phone.trim()}';
+    // Phone is optional — only build the E.164-style number (dial code +
+    // local digits, e.g. +966501234567) when the user actually entered one.
+    final trimmedPhone = phone.trim();
+    final fullPhone = trimmedPhone.isNotEmpty && phoneCountry != null
+        ? '+${phoneCountry.dialCode}$trimmedPhone'
+        : null;
 
     try {
       await appDio.post('/auth/register', data: {
         'full_name':             fullName.trim(),
         'username':              username.trim(),
-        'phone_number':          fullPhone,
+        if (fullPhone != null) 'phone_number': fullPhone,
         'email':                 email.trim(),
         'password':              password,
         'password_confirmation': confirmPassword,
@@ -231,16 +235,17 @@ abstract class FormValidator {
       return 'validUsernameFormat';
     }
 
+    // Phone is optional (Apple 5.1.1(v) — not core to the app's function).
+    // Only validate format/length when the user actually entered something.
     final digits = phone.trim();
-    if (digits.isEmpty) {
-      return 'validPhoneRequired';
-    }
-    if (phoneCountry == null) {
-      return 'validPhoneCountryRequired';
-    }
-    if (digits.length < phoneCountry.minLength ||
-        digits.length > phoneCountry.maxLength) {
-      return 'validPhoneInvalid';
+    if (digits.isNotEmpty) {
+      if (phoneCountry == null) {
+        return 'validPhoneCountryRequired';
+      }
+      if (digits.length < phoneCountry.minLength ||
+          digits.length > phoneCountry.maxLength) {
+        return 'validPhoneInvalid';
+      }
     }
 
     final mail = email.trim();

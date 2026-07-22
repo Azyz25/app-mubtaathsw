@@ -72,7 +72,7 @@
   "username": "Username",
   "usernameHint": "Username",
   "phone": "Phone number",
-  "phoneHint": "+966XXXXXXXXX",
+  "phoneHint": "+966XXXXXXXXX (optional)",
   "send": "Send",
   "sendCode": "Send Code",
   "sendResetLink": "Send reset link",

@@ -84,7 +84,6 @@
 	<string>يحتاج التطبيق إلى موقعك لتحديد أوقات الصلاة واتجاه القبلة بدقة</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>audio</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>

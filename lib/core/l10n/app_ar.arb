@@ -72,7 +72,7 @@
   "username": "اسم المستخدم",
   "usernameHint": "اسم المستخدم",
   "phone": "رقم الجوال",
-  "phoneHint": "+966XXXXXXXXX",
+  "phoneHint": "+966XXXXXXXXX (اختياري)",
   "send": "إرسال",
   "sendCode": "إرسال الرمز",
   "sendResetLink": "إرسال رابط الاسترداد",
