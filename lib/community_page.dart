@@ -218,6 +218,9 @@ class CommunityCubit extends Cubit<CommunityState> {
           .map((e) => CommunityRoom.fromJson(e as Map<String, dynamic>))
           .toList();
 
+      // The user may have navigated away (closing this Cubit) while these
+      // requests were in flight — emitting after close throws StateError.
+      if (isClosed) return;
       emit(state.copyWith(
         isLoading:     false,
         topics:        topics,
@@ -227,6 +230,7 @@ class CommunityCubit extends Cubit<CommunityState> {
       _statusCubit.seedCounts({for (final r in rooms) r.id: r.listenerCount});
     } catch (e) {
       logDebug('[CommunityCubit] fetch error: $e');
+      if (isClosed) return;
       emit(state.copyWith(isLoading: false, hasError: true));
     }
   }
